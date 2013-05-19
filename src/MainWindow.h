@@ -63,6 +63,7 @@ private:
 	Ui::MainWindow *ui; //for Qt UIC
 	
 	const QString &m_tempFolder;
+	bool m_firstShow;
 	QString m_mediaInfoPath;
 	HANDLE m_mediaInfoHandle;
 	QProcess *m_process;

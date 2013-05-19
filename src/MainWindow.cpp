@@ -58,6 +58,7 @@ CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
 :
 	QMainWindow(parent),
 	m_tempFolder(tempFolder),
+	m_firstShow(true),
 	ui(new Ui::MainWindow)
 {
 	//Init UI
@@ -120,6 +121,30 @@ void CMainWindow::showEvent(QShowEvent *event)
 	ui->versionLabel->setText(QString("v%1 (%2)").arg(QString().sprintf("%u.%02u", mixp_versionMajor, mixp_versionMinor), getBuildDate().toString(Qt::ISODate)));
 	resizeEvent(NULL);
 	setAcceptDrops(true);
+
+	if(m_firstShow)
+	{
+		const QStringList arguments = qApp->arguments();
+		for(QStringList::ConstIterator iter = arguments.constBegin(); iter != arguments.constEnd(); iter++)
+		{
+			if(QString::compare(*iter, "--open", Qt::CaseInsensitive) == 0)
+			{
+				if(++iter != arguments.constEnd())
+				{
+					QFileInfo currentFile = QFileInfo(*iter);
+					if(currentFile.exists() && currentFile.isFile())
+					{
+						m_droppedFile = currentFile.canonicalFilePath();
+						QTimer::singleShot(0, this, SLOT(handleDroppedFile()));
+						break;
+					}
+					continue;
+				}
+				break;
+			}
+		}
+		m_firstShow = false;
+	}
 }
 
 void CMainWindow::closeEvent(QCloseEvent *event)
