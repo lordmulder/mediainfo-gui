@@ -1,0 +1,60 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "afxres.h"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Neutral resources
+//
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+IDI_ICON1               ICON                    "MediaInfoXP.ico"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+  FILEVERSION    1,0,0,0
+  PRODUCTVERSION 1,0,0,0
+  FILEFLAGSMASK  0x17L
+#ifdef _DEBUG
+  FILEFLAGS 0x3L
+#else
+  FILEFLAGS 0x2L
+#endif
+  FILEOS 0x40004L
+  FILETYPE 0x1L
+  FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000004b0"
+        BEGIN
+            VALUE "Author", "LoRd_MuldeR <mulder2@gmx.de>"
+            VALUE "Comments", "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY"
+            VALUE "CompanyName", "Free Software Foundation"
+            VALUE "FileDescription", "MediaInfoXP - GUI for MediaInfo"
+            VALUE "FileVersion", "1.00"
+            VALUE "InternalName", "MediaInfoXP_Qt"
+            VALUE "LegalCopyright", "Copyright (C) 2004-2013 LoRd_MuldeR <MuldeR2@GMX.de>"
+            VALUE "LegalTrademarks", "This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License <http://www.gnu.org/>"
+            VALUE "OriginalFilename", "MediaInfoXP.exe"
+            VALUE "ProductName", "MediaInfoXP - GUI for MediaInfo"
+            VALUE "ProductVersion", "1.00"
+            VALUE "Website" "http://muldersoft.com/"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0, 1200
+    END
+END

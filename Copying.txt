@@ -1,0 +1,5 @@
+MediaInfoXP (GUI for MediaInfo) was created from the scratch by LoRd_MuldeR <mulder2@gmx.de> and is distributed under the terms of the GNU General Public License ('License.html').
+
+The Qt GUI Toolkit is Copyright (C) 2012 Digia Finland Ltd and/or its subsidiary(-ies). You may use, distribute and copy the Qt GUI Toolkit under the terms of GNU General Public License version 3.
+
+MediaInfo(Lib) is Copyright (C) 2002-2013 MediaArea.net SARL. Redistribution and use in source and binary forms, with or without modification, are permitted according to the BSD-2-Clause license.
