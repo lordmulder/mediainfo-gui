@@ -46,13 +46,18 @@
 #define SET_FONT_BOLD(WIDGET,BOLD) { QFont _font = WIDGET->font(); _font.setBold(BOLD); WIDGET->setFont(_font); }
 #define SET_TEXT_COLOR(WIDGET,COLOR) { QPalette _palette = WIDGET->palette(); _palette.setColor(QPalette::WindowText, (COLOR)); _palette.setColor(QPalette::Text, (COLOR)); WIDGET->setPalette(_palette); }
 
-////////////////////////////////////////////////////////////
-// Constructor
-////////////////////////////////////////////////////////////
+//Text
+const char *STATUS_BLNK = ">> You can drop any type of media files here <<";
+const char *STATUS_WORK = "Analyzing file, this may take a moment or two...";
 
+//Links
 const char *LINK_MULDER = "http://muldersoft.com/";
 const char *LINK_MEDIAINFO = "http://mediainfo.sourceforge.net/en";
 const char *LINK_DISCUSS = "http://forum.doom9.org/showthread.php?t=96516";
+
+////////////////////////////////////////////////////////////
+// Constructor
+////////////////////////////////////////////////////////////
 
 CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
 :
@@ -83,11 +88,16 @@ CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
 
 	//Create label
 	m_floatingLabel = new QLabel(ui->textBrowser);
-	m_floatingLabel->setText(">> You can drop any type of media files here <<");
+	m_floatingLabel->setText(QString::fromLatin1(STATUS_BLNK));
 	m_floatingLabel->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	m_floatingLabel->show();
 	SET_TEXT_COLOR(m_floatingLabel, Qt::darkGray);
 	SET_FONT_BOLD(m_floatingLabel, true);
+
+	//Update font
+	QFont font("Lucida Console");
+	font.setStyleHint(QFont::TypeWriter);
+	ui->textBrowser->setFont(font);
 
 	//Clear
 	m_mediaInfoPath.clear();
@@ -238,6 +248,7 @@ void CMainWindow::clearButtonClicked(void)
 	}
 
 	ui->textBrowser->clear();
+	m_floatingLabel->setText(STATUS_BLNK);
 	m_floatingLabel->show();
 }
 
@@ -247,15 +258,12 @@ void CMainWindow::outputAvailable(void)
 	{
 		while(m_process->canReadLine())
 		{
-			QByteArray line = m_process->readLine();
-			ui->textBrowser->append(QString::fromUtf8(line).trimmed());
+			if(m_floatingLabel->isVisible()) m_floatingLabel->hide();
+			QString line = Qt::escape(QString::fromUtf8(m_process->readLine()).trimmed()).replace(' ', "&nbsp;");
+			if(!(line.isEmpty() || line.contains(':'))) line = QString("<b>%1</b>").arg(line);
+			ui->textBrowser->setHtml(m_output.append(line).append("<br>"));
 		}
 	}
-}
-
-void CMainWindow::processStarted(void)
-{
-	ui->textBrowser->clear();
 }
 
 void CMainWindow::processFinished(void)
@@ -451,12 +459,6 @@ QString CMainWindow::getMediaInfoPath(void)
 	//Validate file content
 	VALIDATE_MEDIAINFO(m_mediaInfoHandle);
 
-	//Failed?
-	if(m_mediaInfoPath.isEmpty())
-	{
-		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to extract MediaInfo binary!"), QMessageBox::Ok);
-	}
-
 	return m_mediaInfoPath;
 }
 
@@ -472,7 +474,6 @@ bool CMainWindow::analyzeFile(const QString &filePath)
 		connect(m_process, SIGNAL(readyReadStandardOutput()), this, SLOT(outputAvailable()));
 		connect(m_process, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(processFinished()));
 		connect(m_process, SIGNAL(error(QProcess::ProcessError)), this, SLOT(processFinished()));
-		connect(m_process, SIGNAL(started()), this, SLOT(processStarted()));
 	}
 
 	//Still running?
@@ -482,19 +483,42 @@ bool CMainWindow::analyzeFile(const QString &filePath)
 		return false;
 	}
 
+	//Clear data
+	ui->textBrowser->clear();
+	m_output.clear();
+
+	//Disable buttons
+	ui->analyzeButton->setEnabled(false);
+	ui->exitButton->setEnabled(false);
+
+	//Show banner
+	m_floatingLabel->show();
+	m_floatingLabel->setText(QString::fromLatin1(STATUS_WORK));
+	
+	//Update
+	qApp->processEvents(QEventLoop::ExcludeUserInputEvents);
+
 	//Lookup MediaInfo path
 	const QString mediaInfoPath = getMediaInfoPath();
 	if(mediaInfoPath.isEmpty())
 	{
+		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to extract MediaInfo binary!"), QMessageBox::Ok);
 		return false;
 	}
 
+	//Start analyziation
 	qDebug("Analyzing media file:\n%s\n", filePath.toUtf8().constData());
 	m_process->start(mediaInfoPath, QStringList() << QDir::toNativeSeparators(filePath));
 
-	m_floatingLabel->hide();
-	ui->analyzeButton->setEnabled(true);
-	ui->exitButton->setEnabled(true);
+	//Wait for process to start
+	if(!m_process->waitForStarted())
+	{
+		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to create MediaInfo process!"), QMessageBox::Ok);
+		m_floatingLabel->hide();
+		ui->analyzeButton->setEnabled(true);
+		ui->exitButton->setEnabled(true);
+		return false;
+	}
 
 	return true;
 }

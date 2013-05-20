@@ -45,7 +45,6 @@ private slots:
 	void analyzeButtonClicked(void);
 	void clearButtonClicked(void);
 	void outputAvailable(void);
-	void processStarted(void);
 	void processFinished(void);
 	void linkTriggered(void);
 	void showAboutScreen(void);
@@ -69,6 +68,7 @@ private:
 	QProcess *m_process;
 	QLabel *m_floatingLabel;
 	QString m_droppedFile;
+	QString m_output;
 
 	QDate getBuildDate(void);
 	QString getMediaInfoPath(void);

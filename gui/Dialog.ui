@@ -23,11 +23,6 @@
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
        <widget class="QTextBrowser" name="textBrowser">
-        <property name="font">
-         <font>
-          <family>Lucida Console</family>
-         </font>
-        </property>
         <property name="horizontalScrollBarPolicy">
          <enum>Qt::ScrollBarAlwaysOff</enum>
         </property>
