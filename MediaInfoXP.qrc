@@ -5,9 +5,11 @@
     <file>MediaInfoXP.png</file>
     <file>res/ico_clear.png</file>
     <file>res/ico_discard.png</file>
+    <file>res/ico_disk.png</file>
     <file>res/ico_folder.png</file>
     <file>res/ico_info.png</file>
     <file>res/ico_link.png</file>
+    <file>res/ico_paste.png</file>
     <file>res/ico_qt.png</file>
     <file>res/ico_quit.png</file>
     <file>res/logo.png</file>

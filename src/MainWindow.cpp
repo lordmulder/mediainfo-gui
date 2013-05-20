@@ -34,6 +34,7 @@
 #include <QCloseEvent>
 #include <QScrollBar>
 #include <QDesktopServices>
+#include <QClipboard>
 
 //Win32
 #define WIN32_LEAN_AND_MEAN
@@ -79,12 +80,18 @@ CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
 	//Setup connections
 	connect(ui->analyzeButton, SIGNAL(clicked()), this, SLOT(analyzeButtonClicked()));
 	connect(ui->actionOpen, SIGNAL(triggered()), this, SLOT(analyzeButtonClicked()));
+	connect(ui->actionSave, SIGNAL(triggered()), this, SLOT(saveButtonClicked()));
+	connect(ui->actionCopyToClipboard, SIGNAL(triggered()), this, SLOT(copyToClipboardButtonClicked()));
 	connect(ui->actionClear, SIGNAL(triggered()), this, SLOT(clearButtonClicked()));
 	connect(ui->actionLink_MuldeR, SIGNAL(triggered()), this, SLOT(linkTriggered()));
 	connect(ui->actionLink_MediaInfo, SIGNAL(triggered()), this, SLOT(linkTriggered()));
 	connect(ui->actionLink_Discuss, SIGNAL(triggered()), this, SLOT(linkTriggered()));
 	connect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(showAboutScreen()));
 	ui->versionLabel->installEventFilter(this);
+
+	//Context menu
+	ui->textBrowser->setContextMenuPolicy(Qt::ActionsContextMenu);
+	ui->textBrowser->insertActions(0, ui->menuFile->actions());
 
 	//Create label
 	m_floatingLabel = new QLabel(ui->textBrowser);
@@ -93,12 +100,9 @@ CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
 	m_floatingLabel->show();
 	SET_TEXT_COLOR(m_floatingLabel, Qt::darkGray);
 	SET_FONT_BOLD(m_floatingLabel, true);
-
-	//Update font
-	QFont font("Lucida Console");
-	font.setStyleHint(QFont::TypeWriter);
-	ui->textBrowser->setFont(font);
-
+	m_floatingLabel->setContextMenuPolicy(Qt::ActionsContextMenu);
+	m_floatingLabel->insertActions(0, ui->textBrowser->actions());
+	
 	//Clear
 	m_mediaInfoPath.clear();
 	m_mediaInfoHandle = INVALID_HANDLE_VALUE;
@@ -237,6 +241,34 @@ void CMainWindow::analyzeButtonClicked(void)
 	}
 }
 
+void CMainWindow::saveButtonClicked(void)
+{
+	const QString selectedFile = QFileDialog::getSaveFileName(this, tr("Select file to save..."), QString(), tr("Plain Text (*.txt)"));
+	if(!selectedFile.isEmpty())
+	{
+		QFile file(selectedFile);
+		if(file.open(QIODevice::WriteOnly | QIODevice::WriteOnly))
+		{
+			file.write(m_outputLines.join("\r\n").toUtf8());
+			file.close();
+			MessageBeep(MB_ICONINFORMATION);
+		}
+		else
+		{
+			QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to open the file writing!"), QMessageBox::Ok);
+		}
+	}
+}
+
+void CMainWindow::copyToClipboardButtonClicked(void)
+{
+	if(QClipboard *clipboard = QApplication::clipboard())
+	{
+		clipboard->setText(m_outputLines.join("\n"));
+		MessageBeep(MB_ICONINFORMATION);
+	}
+}
+
 void CMainWindow::clearButtonClicked(void)
 {
 	if(m_process)
@@ -247,30 +279,70 @@ void CMainWindow::clearButtonClicked(void)
 		}
 	}
 
+	//Clear data and re-show banner
 	ui->textBrowser->clear();
 	m_floatingLabel->setText(STATUS_BLNK);
 	m_floatingLabel->show();
+
+	//Disable actions
+	ui->actionClear->setEnabled(false);
+	ui->actionCopyToClipboard->setEnabled(false);
+	ui->actionSave->setEnabled(false);
 }
 
 void CMainWindow::outputAvailable(void)
 {
 	if(m_process)
 	{
+		bool bDataChanged = false;
+
+		//Update lines
 		while(m_process->canReadLine())
 		{
+			bDataChanged = true;
+			QString line = QString::fromUtf8(m_process->readLine()).trimmed();
+			m_outputLines << line;
+		}
+
+		if(bDataChanged)
+		{
+			//Hide banner
 			if(m_floatingLabel->isVisible()) m_floatingLabel->hide();
-			QString line = Qt::escape(QString::fromUtf8(m_process->readLine()).trimmed()).replace(' ', "&nbsp;");
-			if(!(line.isEmpty() || line.contains(':'))) line = QString("<b>%1</b>").arg(line);
-			ui->textBrowser->setHtml(m_output.append(line).append("<br>"));
+
+			//Convert to HTML
+			QStringList htmlData(m_outputLines);
+			htmlData.replaceInStrings("<", "&lt;", Qt::CaseInsensitive);
+			htmlData.replaceInStrings(">", "&gt;", Qt::CaseInsensitive);
+			htmlData.replaceInStrings("\"", "&quot;", Qt::CaseInsensitive);
+			htmlData.replaceInStrings("&", "&amp;", Qt::CaseInsensitive);
+
+			//Highlight headers
+			htmlData.replaceInStrings(QRegExp("^([^:]+):(.+)$"), "<font color=\"darkblue\">\\1:</font>\\2");
+			htmlData.replaceInStrings(QRegExp("^([^:]+)$"), "<b><font color=\"darkred\">\\1</font></b>");
+
+			//Update document
+			ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(htmlData.join("<br>")));
 		}
 	}
 }
 
 void CMainWindow::processFinished(void)
 {
+	//Fetch any remaining data
 	outputAvailable();
+	
+	//Enable actions
+	if(!m_outputLines.empty())
+	{
+		ui->actionClear->setEnabled(true);
+		ui->actionCopyToClipboard->setEnabled(true);
+		ui->actionSave->setEnabled(true);
+	}
+	ui->actionOpen->setEnabled(true);
 	ui->analyzeButton->setEnabled(true);
 	ui->exitButton->setEnabled(true);
+
+	//Scroll up
 	ui->textBrowser->verticalScrollBar()->setValue(0);
 	ui->textBrowser->horizontalScrollBar()->setValue(0);
 }
@@ -298,7 +370,7 @@ void CMainWindow::showAboutScreen(void)
 	text += QString().sprintf("<hr><br>");
 	text += QString().sprintf("This application is powered by MediaInfo v%u.%u.%02u<br>", mixp_miVersionMajor, mixp_miVersionMinor, mixp_miVersionPatch);
 	text += QString().sprintf("Free and OpenSource tool for displaying technical information about media files.<br>");
-	text += QString().sprintf("Copyright (c) 2002-2013 MediaArea.net SARL. All rights reserved.<br><br>");
+	text += QString().sprintf("Copyright (c) 2002-%s MediaArea.net SARL. All rights reserved.<br><br>", &mixp_buildDate[7]);
 	text += QString().sprintf("Redistribution and use is permitted according to the (2-Clause) BSD License.<br>");
 	text += QString().sprintf("Please see <a href=\"%s\">%s</a> for more information.<br></tt></nobr>", LINK_MEDIAINFO, LINK_MEDIAINFO);
 
@@ -485,11 +557,15 @@ bool CMainWindow::analyzeFile(const QString &filePath)
 
 	//Clear data
 	ui->textBrowser->clear();
-	m_output.clear();
+	m_outputLines.clear();
 
 	//Disable buttons
 	ui->analyzeButton->setEnabled(false);
 	ui->exitButton->setEnabled(false);
+	ui->actionClear->setEnabled(false);
+	ui->actionCopyToClipboard->setEnabled(false);
+	ui->actionSave->setEnabled(false);
+	ui->actionOpen->setEnabled(false);
 
 	//Show banner
 	m_floatingLabel->show();
@@ -515,6 +591,7 @@ bool CMainWindow::analyzeFile(const QString &filePath)
 	{
 		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to create MediaInfo process!"), QMessageBox::Ok);
 		m_floatingLabel->hide();
+		ui->actionOpen->setEnabled(true);
 		ui->analyzeButton->setEnabled(true);
 		ui->exitButton->setEnabled(true);
 		return false;

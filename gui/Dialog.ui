@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>720</width>
+    <width>800</width>
     <height>384</height>
    </rect>
   </property>
@@ -160,7 +160,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>720</width>
+     <width>800</width>
      <height>21</height>
     </rect>
    </property>
@@ -169,6 +169,9 @@
      <string>Application</string>
     </property>
     <addaction name="actionOpen"/>
+    <addaction name="separator"/>
+    <addaction name="actionSave"/>
+    <addaction name="actionCopyToClipboard"/>
     <addaction name="actionClear"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
@@ -232,6 +235,9 @@
    </property>
   </action>
   <action name="actionClear">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset resource="../MediaInfoXP.qrc">
      <normaloff>:/res/ico_clear.png</normaloff>:/res/ico_clear.png</iconset>
@@ -247,6 +253,30 @@
    </property>
    <property name="text">
     <string>MediaInfo Discussion (Doom9)</string>
+   </property>
+  </action>
+  <action name="actionCopyToClipboard">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../MediaInfoXP.qrc">
+     <normaloff>:/res/ico_paste.png</normaloff>:/res/ico_paste.png</iconset>
+   </property>
+   <property name="text">
+    <string>Copy to Clipboard</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="../MediaInfoXP.qrc">
+     <normaloff>:/res/ico_disk.png</normaloff>:/res/ico_disk.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save to File...</string>
    </property>
   </action>
  </widget>
