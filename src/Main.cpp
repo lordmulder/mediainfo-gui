@@ -150,12 +150,13 @@ QString mixp_getAppDataFolder(void)
 	return folder;
 }
 
-QString mixp_getTempFolder()
+QString mixp_getTempFolder(QFile **lockfile)
 {
+	*lockfile = NULL;
 	QString tempFolder;
 
 	static const char *TEMP_STR = "Temp";
-	const QString WRITE_TEST_DATA = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.";
+	const QByteArray WRITE_TEST_DATA = QByteArray("Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.");
 	const QString SUB_FOLDER = QUuid::createUuid().toString();
 
 	//Try the %TMP% or %TEMP% directory first
@@ -165,14 +166,16 @@ QString mixp_getTempFolder()
 		temp.mkdir(SUB_FOLDER);
 		if(temp.cd(SUB_FOLDER) && temp.exists())
 		{
-			QFile testFile(QString("%1/~test.tmp").arg(temp.canonicalPath()));
-			if(testFile.open(QIODevice::ReadWrite))
+			QFile *testFile = new QFile(QString("%1/~lock.tmp").arg(temp.canonicalPath()));
+			if(testFile->open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Unbuffered))
 			{
-				if(testFile.write(WRITE_TEST_DATA.toLatin1().constData()) >= strlen(WRITE_TEST_DATA.toLatin1().constData()))
+				if(testFile->write(WRITE_TEST_DATA) >= WRITE_TEST_DATA.size())
 				{
+					*lockfile = testFile; testFile = NULL;
 					tempFolder = temp.canonicalPath();
 				}
-				testFile.remove();
+				if(testFile) testFile->remove();
+				MIXP_DELETE_OBJ(testFile);
 			}
 		}
 		if(!tempFolder.isEmpty())
@@ -200,14 +203,16 @@ QString mixp_getTempFolder()
 				localAppData.mkdir(SUB_FOLDER);
 				if(localAppData.cd(SUB_FOLDER) && localAppData.exists())
 				{
-					QFile testFile(QString("%1/~test.tmp").arg(localAppData.canonicalPath()));
-					if(testFile.open(QIODevice::ReadWrite))
+					QFile *testFile = new QFile(QString("%1/~lock.tmp").arg(localAppData.canonicalPath()));
+					if(testFile->open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Unbuffered))
 					{
-						if(testFile.write(WRITE_TEST_DATA.toLatin1().constData()) >= strlen(WRITE_TEST_DATA.toLatin1().constData()))
+						if(testFile->write(WRITE_TEST_DATA) >= WRITE_TEST_DATA.size())
 						{
+							*lockfile = testFile; testFile = NULL;
 							tempFolder = localAppData.canonicalPath();
 						}
-						testFile.remove();
+						if(testFile) testFile->remove();
+						MIXP_DELETE_OBJ(testFile);
 					}
 				}
 			}
@@ -268,8 +273,10 @@ int mixp_main(int argc, char* argv[])
 	qDebug("Copyright (c) 2004-%s LoRd_MuldeR <mulder2@gmx.de>. Some rights reserved.", &mixp_buildDate[7]);
 	qDebug("Built with Qt v%s, running with Qt v%s.\n", QT_VERSION_STR, qVersion());
 
+	QFile *lockFile = NULL;
+
 	//Get temp folder
-	const QString tempFolder = mixp_getTempFolder();
+	const QString tempFolder = mixp_getTempFolder(&lockFile);
 	qDebug("TEMP folder is:\n%s\n", QDir::toNativeSeparators(tempFolder).toUtf8().constData());
 
 	//Create application
@@ -287,6 +294,8 @@ int mixp_main(int argc, char* argv[])
 	//Clean up
 	MIXP_DELETE_OBJ(mainWindow);
 	MIXP_DELETE_OBJ(application);
+	if(lockFile) lockFile->remove();
+	MIXP_DELETE_OBJ(lockFile);
 	mixp_clean_folder(tempFolder);
 
 	return exit_code;

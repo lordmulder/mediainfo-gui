@@ -579,6 +579,10 @@ bool CMainWindow::analyzeFile(const QString &filePath)
 	if(mediaInfoPath.isEmpty())
 	{
 		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to extract MediaInfo binary!"), QMessageBox::Ok);
+		m_floatingLabel->hide();
+		ui->actionOpen->setEnabled(true);
+		ui->analyzeButton->setEnabled(true);
+		ui->exitButton->setEnabled(true);
 		return false;
 	}
 
