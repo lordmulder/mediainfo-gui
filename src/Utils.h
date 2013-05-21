@@ -19,25 +19,15 @@
 // http://www.gnu.org/licenses/gpl-2.0.txt
 ///////////////////////////////////////////////////////////////////////////////
 
-//Version
-static unsigned int mixp_versionMajor = 2;
-static unsigned int mixp_versionMinor = 1;
+#pragma once
 
-//MediaInfo Version
-static unsigned int mixp_miVersionMajor = 0;
-static unsigned int mixp_miVersionMinor = 7;
-static unsigned int mixp_miVersionPatch = 63;
+#include <QString>
+#include <QFile>
 
-//Build date
-static const char *mixp_buildDate = __DATE__;
-static const char *mixp_buildTime = __TIME__;
+//Helper macros
+#define MIXP_DELETE_OBJ(PTR) do { if((PTR)) { delete ((PTR)); (PTR) = NULL; } } while (0)
+#define QWCHAR(STR) reinterpret_cast<const wchar_t*>(STR.utf16())
 
-//Show console
-#define MIXP_CONSOLE (0)
-
-//Debug build
-#if defined(_DEBUG) && defined(QT_DEBUG) && !defined(NDEBUG) && !defined(QT_NO_DEBUG)
-	#define MIXP_DEBUG (1)
-#else
-	#define MIXP_DEBUG (0)
-#endif
+//Utils
+QString mixp_getTempFolder(QFile **lockfile);
+void mixp_clean_folder(const QString &folderPath);

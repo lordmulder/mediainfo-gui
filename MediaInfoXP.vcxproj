@@ -120,11 +120,13 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">RCC "$(SolutionDir)\tmp\Common\rcc\RCC_%(Filename).cpp"</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)\tmp\Common\rcc\RCC_%(Filename).cpp;%(Outputs)</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)\tmp\Common\rcc\RCC_%(Filename).cpp;%(Outputs)</Outputs>
+      <SubType>Designer</SubType>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\MainWindow.cpp" />
+    <ClCompile Include="src\Utils.cpp" />
     <ClCompile Include="tmp\Common\moc\MOC_MainWindow.cpp" />
     <ClCompile Include="tmp\Common\rcc\RCC_MediaInfoXP.cpp" />
   </ItemGroup>
@@ -140,6 +142,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Config.h" />
+    <ClInclude Include="src\Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MediaInfoXP.rcx">

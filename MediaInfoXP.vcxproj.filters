@@ -27,9 +27,10 @@
     <CustomBuild Include="gui\Dialog.ui">
       <Filter>Dialogs</Filter>
     </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="MediaInfoXP.qrc" />
+    <CustomBuild Include="MediaInfoXP.qrc" />
+    <CustomBuild Include="src\MainWindow.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Main.cpp">
@@ -44,12 +45,15 @@
     <ClCompile Include="tmp\Common\rcc\RCC_MediaInfoXP.cpp">
       <Filter>Source Files\Generated</Filter>
     </ClCompile>
+    <ClCompile Include="src\Utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\MainWindow.h">
+    <ClInclude Include="src\Config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Config.h">
+    <ClInclude Include="src\Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

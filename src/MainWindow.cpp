@@ -42,6 +42,7 @@
 
 //Internal
 #include "Config.h"
+#include "Utils.h"
 
 //Macros
 #define SET_FONT_BOLD(WIDGET,BOLD) { QFont _font = WIDGET->font(); _font.setBold(BOLD); WIDGET->setFont(_font); }

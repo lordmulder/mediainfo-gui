@@ -29,17 +29,13 @@
 
 //Qt
 #include <QApplication>
-#include <QMutex>
-#include <QUuid>
 #include <QDir>
-#include <QLibrary>
 
 //Win32
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <io.h>
 #include <fcntl.h>
-#include <Objbase.h>
 
 #ifdef QT_NODLL
 	#include <QtPlugin>
@@ -50,6 +46,7 @@
 
 #include "Config.h"
 #include "MainWindow.h"
+#include "Utils.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Debug Console
@@ -84,176 +81,6 @@ static void init_console(void)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// Detect TEMP folder
-///////////////////////////////////////////////////////////////////////////////
-
-QString mixp_getAppDataFolder(void)
-{
-	typedef HRESULT (WINAPI *SHGetKnownFolderPathFun)(__in const GUID &rfid, __in DWORD dwFlags, __in HANDLE hToken, __out PWSTR *ppszPath);
-	typedef HRESULT (WINAPI *SHGetFolderPathFun)(__in HWND hwndOwner, __in int nFolder, __in HANDLE hToken, __in DWORD dwFlags, __out LPWSTR pszPath);
-
-	static const int CSIDL_LOCAL_APPDATA = 0x001c;
-	static const GUID GUID_LOCAL_APPDATA = {0xF1B32785,0x6FBA,0x4FCF,{0x9D,0x55,0x7B,0x8E,0x7F,0x15,0x70,0x91}};
-
-	static SHGetKnownFolderPathFun SHGetKnownFolderPathPtr = NULL;
-	static SHGetFolderPathFun SHGetFolderPathPtr = NULL;
-
-	if((!SHGetKnownFolderPathPtr) && (!SHGetFolderPathPtr))
-	{
-		QLibrary kernel32Lib("shell32.dll");
-		if(kernel32Lib.load())
-		{
-			SHGetKnownFolderPathPtr = (SHGetKnownFolderPathFun) kernel32Lib.resolve("SHGetKnownFolderPath");
-			SHGetFolderPathPtr = (SHGetFolderPathFun) kernel32Lib.resolve("SHGetFolderPathW");
-		}
-	}
-
-	QString folder;
-
-	if(SHGetKnownFolderPathPtr)
-	{
-		WCHAR *path = NULL;
-		if(SHGetKnownFolderPathPtr(GUID_LOCAL_APPDATA, 0x00008000, NULL, &path) == S_OK)
-		{
-			//MessageBoxW(0, path, L"SHGetKnownFolderPath", MB_TOPMOST);
-			QDir folderTemp = QDir(QDir::fromNativeSeparators(QString::fromUtf16(reinterpret_cast<const unsigned short*>(path))));
-			if(!folderTemp.exists())
-			{
-				folderTemp.mkpath(".");
-			}
-			if(folderTemp.exists())
-			{
-				folder = folderTemp.canonicalPath();
-			}
-			CoTaskMemFree(path);
-		}
-	}
-	else if(SHGetFolderPathPtr)
-	{
-		WCHAR *path = new WCHAR[4096];
-		if(SHGetFolderPathPtr(NULL, CSIDL_LOCAL_APPDATA, NULL, NULL, path) == S_OK)
-		{
-			//MessageBoxW(0, path, L"SHGetFolderPathW", MB_TOPMOST);
-			QDir folderTemp = QDir(QDir::fromNativeSeparators(QString::fromUtf16(reinterpret_cast<const unsigned short*>(path))));
-			if(!folderTemp.exists())
-			{
-				folderTemp.mkpath(".");
-			}
-			if(folderTemp.exists())
-			{
-				folder = folderTemp.canonicalPath();
-			}
-		}
-		delete [] path;
-	}
-
-	return folder;
-}
-
-QString mixp_getTempFolder(QFile **lockfile)
-{
-	*lockfile = NULL;
-	QString tempFolder;
-
-	static const char *TEMP_STR = "Temp";
-	const QByteArray WRITE_TEST_DATA = QByteArray("Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.");
-	const QString SUB_FOLDER = QUuid::createUuid().toString();
-
-	//Try the %TMP% or %TEMP% directory first
-	QDir temp = QDir::temp();
-	if(temp.exists())
-	{
-		temp.mkdir(SUB_FOLDER);
-		if(temp.cd(SUB_FOLDER) && temp.exists())
-		{
-			QFile *testFile = new QFile(QString("%1/~lock.tmp").arg(temp.canonicalPath()));
-			if(testFile->open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Unbuffered))
-			{
-				if(testFile->write(WRITE_TEST_DATA) >= WRITE_TEST_DATA.size())
-				{
-					*lockfile = testFile; testFile = NULL;
-					tempFolder = temp.canonicalPath();
-				}
-				if(testFile) testFile->remove();
-				MIXP_DELETE_OBJ(testFile);
-			}
-		}
-		if(!tempFolder.isEmpty())
-		{
-			return tempFolder;
-		}
-	}
-
-	//Create TEMP folder in %LOCALAPPDATA%
-	QDir localAppData = QDir(mixp_getAppDataFolder());
-	if(!localAppData.path().isEmpty())
-	{
-		if(!localAppData.exists())
-		{
-			localAppData.mkpath(".");
-		}
-		if(localAppData.exists())
-		{
-			if(!localAppData.entryList(QDir::AllDirs).contains(TEMP_STR, Qt::CaseInsensitive))
-			{
-				localAppData.mkdir(TEMP_STR);
-			}
-			if(localAppData.cd(TEMP_STR) && localAppData.exists())
-			{
-				localAppData.mkdir(SUB_FOLDER);
-				if(localAppData.cd(SUB_FOLDER) && localAppData.exists())
-				{
-					QFile *testFile = new QFile(QString("%1/~lock.tmp").arg(localAppData.canonicalPath()));
-					if(testFile->open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Unbuffered))
-					{
-						if(testFile->write(WRITE_TEST_DATA) >= WRITE_TEST_DATA.size())
-						{
-							*lockfile = testFile; testFile = NULL;
-							tempFolder = localAppData.canonicalPath();
-						}
-						if(testFile) testFile->remove();
-						MIXP_DELETE_OBJ(testFile);
-					}
-				}
-			}
-		}
-		if(!tempFolder.isEmpty())
-		{
-			return tempFolder;
-		}
-	}
-
-	qFatal("Failed to determine TEMP folder!");
-	return QString();
-}
-
-void mixp_clean_folder(const QString &folderPath)
-{
-	QDir tempFolder(folderPath);
-	QFileInfoList entryList = tempFolder.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot);
-
-	for(int i = 0; i < entryList.count(); i++)
-	{
-		if(entryList.at(i).isDir())
-		{
-			mixp_clean_folder(entryList.at(i).canonicalFilePath());
-		}
-		else
-		{
-			for(int j = 0; j < 5; j++)
-			{
-				if(QFile::remove(entryList.at(i).canonicalFilePath()))
-				{
-					break;
-				}
-			}
-		}
-	}
-	
-	tempFolder.rmdir(".");
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // MAIN function
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -269,7 +96,7 @@ int mixp_main(int argc, char* argv[])
 
 	if(bConsole) init_console();
 
-	qDebug("MediaInfoXP [%s]", mixp_buildDate);
+	qDebug("MediaInfoXP v%u.%02u, built on %s at %s.", mixp_versionMajor, mixp_versionMinor, mixp_buildDate, mixp_buildTime);
 	qDebug("Copyright (c) 2004-%s LoRd_MuldeR <mulder2@gmx.de>. Some rights reserved.", &mixp_buildDate[7]);
 	qDebug("Built with Qt v%s, running with Qt v%s.\n", QT_VERSION_STR, qVersion());
 
@@ -277,6 +104,12 @@ int mixp_main(int argc, char* argv[])
 
 	//Get temp folder
 	const QString tempFolder = mixp_getTempFolder(&lockFile);
+	if(tempFolder.isEmpty())
+	{
+		qFatal("Failed to determine TEMP folder!");
+		return 1;
+	}
+	
 	qDebug("TEMP folder is:\n%s\n", QDir::toNativeSeparators(tempFolder).toUtf8().constData());
 
 	//Create application
