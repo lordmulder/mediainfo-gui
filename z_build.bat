@@ -97,7 +97,7 @@ REM ///////////////////////////////////////////////////////////////////////////
 set "OUT_NAME=MediaInfo-GUI.%ISO_DATE%"
 :CheckOutName
 if exist "%~dp0\out\%OUT_NAME%.zip" (
-	"OUT_NAME=%OUT_NAME%.new"
+	set "OUT_NAME=%OUT_NAME%.new"
 	goto CheckOutName
 )
 
