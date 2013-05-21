@@ -92,10 +92,21 @@ attrib +R "%PACK_PATH%\*.html"
 attrib +R "%PACK_PATH%\*.txt"
 
 REM ///////////////////////////////////////////////////////////////////////////
-REM // Build the installer
+REM // Generate outfile name
 REM ///////////////////////////////////////////////////////////////////////////
-"%~dp0\etc\7za.exe" a -mm=Deflate -mfb=258 -mpass=15 -r "%~dp0\out\MediaInfo-GUI.%ISO_DATE%.zip" "%PACK_PATH%\*.*"
+set "OUT_NAME=MediaInfo-GUI.%ISO_DATE%"
+:CheckOutName
+if exist "%~dp0\out\%OUT_NAME%.zip" (
+	"OUT_NAME=%OUT_NAME%.new"
+	goto CheckOutName
+)
+
+REM ///////////////////////////////////////////////////////////////////////////
+REM // Build the package
+REM ///////////////////////////////////////////////////////////////////////////
+"%~dp0\etc\7za.exe" a -mm=Deflate -mfb=258 -mpass=15 -r "%~dp0\out\%OUT_NAME%.zip" "%PACK_PATH%\*.*"
 rmdir /Q /S "%PACK_PATH%"
+attrib +R "%~dp0\out\%OUT_NAME%.zip"
 
 REM ///////////////////////////////////////////////////////////////////////////
 REM // COMPLETE
