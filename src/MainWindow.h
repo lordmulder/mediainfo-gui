@@ -72,7 +72,6 @@ private:
 	QString m_droppedFile;
 	QStringList m_outputLines;
 
-	QDate getBuildDate(void);
 	QString getMediaInfoPath(void);
 	bool analyzeFile(const QString &filePath);
 };

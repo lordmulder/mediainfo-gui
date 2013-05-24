@@ -24,10 +24,15 @@
 #include <QString>
 #include <QFile>
 
+class QDate;
+
 //Helper macros
 #define MIXP_DELETE_OBJ(PTR) do { if((PTR)) { delete ((PTR)); (PTR) = NULL; } } while (0)
+#define MIXP_DELETE_ARR(PTR) do { if((PTR)) { delete [] ((PTR)); (PTR) = NULL; } } while (0)
 #define QWCHAR(STR) reinterpret_cast<const wchar_t*>(STR.utf16())
 
 //Utils
 QString mixp_getTempFolder(QFile **lockfile);
 void mixp_clean_folder(const QString &folderPath);
+QDate mixp_get_build_date(void);
+QDate mixp_get_current_date(void);

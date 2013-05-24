@@ -133,8 +133,18 @@ void CMainWindow::showEvent(QShowEvent *event)
 {
 	QMainWindow::showEvent(event);
 	resize(this->minimumSize());
-	ui->versionLabel->setText(QString("v%1 (%2)").arg(QString().sprintf("%u.%02u", mixp_versionMajor, mixp_versionMinor), getBuildDate().toString(Qt::ISODate)));
+	
+	//Init test
+	ui->versionLabel->setText(QString("v%1 (%2)").arg(QString().sprintf("%u.%02u", mixp_versionMajor, mixp_versionMinor), mixp_get_build_date().toString(Qt::ISODate)));
+	ui->updateLabel->setText(tr("This version is more than six month old and probably outdated. Please check <a href=\"%1\">%1</a> for updates!").arg(LINK_MULDER));
+
+	//Show update hint?
+	ui->updateLabel->setVisible(mixp_get_build_date().addMonths(6) < mixp_get_current_date());
+
+	//Force resize event
 	resizeEvent(NULL);
+
+	//Enable drag & drop support
 	setAcceptDrops(true);
 
 	if(m_firstShow)
@@ -361,9 +371,12 @@ void CMainWindow::showAboutScreen(void)
 {
 	QString text;
 
+	const QDate buildDate = mixp_get_build_date();
+	const QDate curntDate = mixp_get_current_date();
+
 	text += QString().sprintf("<nobr><tt><b>MediaInfoXP v%u.%02u - Simple GUI for MediaInfo</b><br>", mixp_versionMajor, mixp_versionMinor);
-	text += QString().sprintf("Copyright (c) 2004-%04d LoRd_MuldeR &lt;mulder2@gmx.de&gt;. Some rights reserved.<br>", qMax(getBuildDate().year(),QDate::currentDate().year()));
-	text += QString().sprintf("Built on %s at %s, using Qt Framework v%s.<br><br>", getBuildDate().toString(Qt::ISODate).toLatin1().constData(), mixp_buildTime, qVersion());
+	text += QString().sprintf("Copyright (c) 2004-%04d LoRd_MuldeR &lt;mulder2@gmx.de&gt;. Some rights reserved.<br>", qMax(buildDate.year(),curntDate.year()));
+	text += QString().sprintf("Built on %s at %s, using Qt Framework v%s.<br><br>", buildDate.toString(Qt::ISODate).toLatin1().constData(), mixp_buildTime, qVersion());
 	text += QString().sprintf("This program is free software: you can redistribute it and/or modify<br>");
 	text += QString().sprintf("it under the terms of the GNU General Public License &lt;http://www.gnu.org/&gt;.<br>");
 	text += QString().sprintf("Note that this program is distributed with ABSOLUTELY NO WARRANTY.<br><br>");
@@ -415,36 +428,6 @@ void CMainWindow::handleDroppedFile(void)
 ////////////////////////////////////////////////////////////
 // PRIVATE FUNCTIONS
 ////////////////////////////////////////////////////////////
-
-QDate CMainWindow::getBuildDate(void)
-{
-	QDate buildDate(2000, 1, 1);
-
-	static const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-
-	int date[3] = {0, 0, 0}; char temp[12] = {'\0'};
-	strncpy_s(temp, 12, mixp_buildDate, _TRUNCATE);
-
-	if(strlen(temp) == 11)
-	{
-		temp[3] = temp[6] = '\0';
-		date[2] = atoi(&temp[4]);
-		date[0] = atoi(&temp[7]);
-			
-		for(int j = 0; j < 12; j++)
-		{
-			if(!_strcmpi(&temp[0], months[j]))
-			{
-				date[1] = j+1;
-				break;
-			}
-		}
-
-		buildDate = QDate(date[0], date[1], date[2]);
-	}
-
-	return buildDate;
-}
 
 #define VALIDATE_MEDIAINFO(HANDLE) do \
 { \

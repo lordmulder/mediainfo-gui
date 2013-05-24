@@ -20,6 +20,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "Utils.h"
+#include "Config.h"
 
 //StdLib
 #include <cstdio>
@@ -34,6 +35,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QUuid>
+#include <QDate>
 
 //Win32
 #define WIN32_LEAN_AND_MEAN
@@ -41,6 +43,7 @@
 #include <io.h>
 #include <fcntl.h>
 #include <Objbase.h>
+#include <Psapi.h>
 
 /*
  * Try to lock folder
@@ -201,4 +204,100 @@ void mixp_clean_folder(const QString &folderPath)
 	}
 	
 	tempFolder.rmdir(".");
+}
+
+/*
+ * Clean folder
+ */
+QDate mixp_get_build_date(void)
+{
+	QDate buildDate(2000, 1, 1);
+
+	static const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+	int date[3] = {0, 0, 0}; char temp[12] = {'\0'};
+	strncpy_s(temp, 12, mixp_buildDate, _TRUNCATE);
+
+	if(strlen(temp) == 11)
+	{
+		temp[3] = temp[6] = '\0';
+		date[2] = atoi(&temp[4]);
+		date[0] = atoi(&temp[7]);
+			
+		for(int j = 0; j < 12; j++)
+		{
+			if(!_strcmpi(&temp[0], months[j]))
+			{
+				date[1] = j+1;
+				break;
+			}
+		}
+
+		buildDate = QDate(date[0], date[1], date[2]);
+	}
+
+	return buildDate;
+}
+
+/*
+ * Clean folder
+ */
+QDate mixp_get_current_date(void)
+{
+	const DWORD MAX_PROC = 1024;
+	DWORD *processes = new DWORD[MAX_PROC];
+	DWORD bytesReturned = 0;
+	
+	if(!EnumProcesses(processes, sizeof(DWORD) * MAX_PROC, &bytesReturned))
+	{
+		MIXP_DELETE_ARR(processes);
+		return QDate::currentDate();
+	}
+
+	const DWORD procCount = bytesReturned / sizeof(DWORD);
+	ULARGE_INTEGER lastStartTime;
+	memset(&lastStartTime, 0, sizeof(ULARGE_INTEGER));
+
+	for(DWORD i = 0; i < procCount; i++)
+	{
+		HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, processes[i]);
+		if(hProc)
+		{
+			FILETIME processTime[4];
+			if(GetProcessTimes(hProc, &processTime[0], &processTime[1], &processTime[2], &processTime[3]))
+			{
+				ULARGE_INTEGER timeCreation;
+				timeCreation.LowPart = processTime[0].dwLowDateTime;
+				timeCreation.HighPart = processTime[0].dwHighDateTime;
+				if(timeCreation.QuadPart > lastStartTime.QuadPart)
+				{
+					lastStartTime.QuadPart = timeCreation.QuadPart;
+				}
+			}
+			CloseHandle(hProc);
+		}
+	}
+
+	MIXP_DELETE_ARR(processes);
+	
+	FILETIME lastStartTime_fileTime;
+	lastStartTime_fileTime.dwHighDateTime = lastStartTime.HighPart;
+	lastStartTime_fileTime.dwLowDateTime = lastStartTime.LowPart;
+
+	FILETIME lastStartTime_localTime;
+	if(!FileTimeToLocalFileTime(&lastStartTime_fileTime, &lastStartTime_localTime))
+	{
+		memcpy(&lastStartTime_localTime, &lastStartTime_fileTime, sizeof(FILETIME));
+	}
+	
+	SYSTEMTIME lastStartTime_system;
+	if(!FileTimeToSystemTime(&lastStartTime_localTime, &lastStartTime_system))
+	{
+		memset(&lastStartTime_system, 0, sizeof(SYSTEMTIME));
+		lastStartTime_system.wYear = 1970; lastStartTime_system.wMonth = lastStartTime_system.wDay = 1;
+	}
+
+	const QDate currentDate = QDate::currentDate();
+	const QDate processDate = QDate(lastStartTime_system.wYear, lastStartTime_system.wMonth, lastStartTime_system.wDay);
+	return (currentDate >= processDate) ? currentDate : processDate;
 }
