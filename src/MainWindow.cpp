@@ -57,6 +57,16 @@ const char *LINK_MULDER = "http://muldersoft.com/";
 const char *LINK_MEDIAINFO = "http://mediainfo.sourceforge.net/en";
 const char *LINK_DISCUSS = "http://forum.doom9.org/showthread.php?t=96516";
 
+//HTML characters
+static QList<QPair<const QString, const QString>> HTML_ESCAPE(void)
+{
+	QList<QPair<const QString, const QString>> htmlEscape;
+	htmlEscape << QPair<const QString, const QString>("<", "&lt;");
+	htmlEscape << QPair<const QString, const QString>(">", "&gt;");
+	htmlEscape << QPair<const QString, const QString>("&", "&amp;");
+	return htmlEscape;
+}
+
 ////////////////////////////////////////////////////////////
 // Constructor
 ////////////////////////////////////////////////////////////
@@ -66,6 +76,7 @@ CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
 	QMainWindow(parent),
 	m_tempFolder(tempFolder),
 	m_firstShow(true),
+	m_htmlEscape(HTML_ESCAPE()),
 	ui(new Ui::MainWindow)
 {
 	//Init UI
@@ -135,7 +146,7 @@ void CMainWindow::showEvent(QShowEvent *event)
 	resize(this->minimumSize());
 	
 	//Init test
-	ui->versionLabel->setText(QString("v%1 (%2)").arg(QString().sprintf("%u.%02u", mixp_versionMajor, mixp_versionMinor), mixp_get_build_date().toString(Qt::ISODate)));
+	ui->versionLabel->setText(QString("v%1 / v%2 (%3)").arg(QString().sprintf("%u.%02u", mixp_versionMajor, mixp_versionMinor), QString().sprintf("%u.%u.%02u", mixp_miVersionMajor, mixp_miVersionMinor, mixp_miVersionPatch), mixp_get_build_date().toString(Qt::ISODate)));
 	ui->updateLabel->setText(tr("This version is more than six month old and probably outdated. Please check <a href=\"%1\">%1</a> for updates!").arg(LINK_MULDER));
 
 	//Show update hint?
@@ -303,6 +314,8 @@ void CMainWindow::clearButtonClicked(void)
 
 void CMainWindow::outputAvailable(void)
 {
+
+	
 	if(m_process)
 	{
 		bool bDataChanged = false;
@@ -312,7 +325,10 @@ void CMainWindow::outputAvailable(void)
 		{
 			bDataChanged = true;
 			QString line = QString::fromUtf8(m_process->readLine()).trimmed();
-			m_outputLines << line;
+			if(!(line.isEmpty() && m_outputLines.empty()))
+			{
+				m_outputLines << line;
+			}
 		}
 
 		if(bDataChanged)
@@ -322,10 +338,7 @@ void CMainWindow::outputAvailable(void)
 
 			//Convert to HTML
 			QStringList htmlData(m_outputLines);
-			htmlData.replaceInStrings("<", "&lt;", Qt::CaseInsensitive);
-			htmlData.replaceInStrings(">", "&gt;", Qt::CaseInsensitive);
-			htmlData.replaceInStrings("\"", "&quot;", Qt::CaseInsensitive);
-			htmlData.replaceInStrings("&", "&amp;", Qt::CaseInsensitive);
+			escapeHtmlChars(htmlData);
 
 			//Highlight headers
 			htmlData.replaceInStrings(QRegExp("^([^:]+):(.+)$"), "<font color=\"darkblue\">\\1:</font>\\2");
@@ -342,6 +355,12 @@ void CMainWindow::processFinished(void)
 	//Fetch any remaining data
 	outputAvailable();
 	
+	//Failed?
+	if(m_outputLines.empty())
+	{
+		ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(tr("Oups, apparently MediaInfo encountered a problem :-(")));
+	}
+
 	//Enable actions
 	if(!m_outputLines.empty())
 	{
@@ -349,6 +368,7 @@ void CMainWindow::processFinished(void)
 		ui->actionCopyToClipboard->setEnabled(true);
 		ui->actionSave->setEnabled(true);
 	}
+	
 	ui->actionOpen->setEnabled(true);
 	ui->analyzeButton->setEnabled(true);
 	ui->exitButton->setEnabled(true);
@@ -356,6 +376,8 @@ void CMainWindow::processFinished(void)
 	//Scroll up
 	ui->textBrowser->verticalScrollBar()->setValue(0);
 	ui->textBrowser->horizontalScrollBar()->setValue(0);
+
+	qDebug("Process has finished (Code: %d)\n", m_process->exitCode());
 }
 
 void CMainWindow::linkTriggered(void)
@@ -562,6 +584,7 @@ bool CMainWindow::analyzeFile(const QString &filePath)
 	const QString mediaInfoPath = getMediaInfoPath();
 	if(mediaInfoPath.isEmpty())
 	{
+		ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(tr("Oups, failed to extract MediaInfo binary!")));
 		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to extract MediaInfo binary!"), QMessageBox::Ok);
 		m_floatingLabel->hide();
 		ui->actionOpen->setEnabled(true);
@@ -577,6 +600,8 @@ bool CMainWindow::analyzeFile(const QString &filePath)
 	//Wait for process to start
 	if(!m_process->waitForStarted())
 	{
+		qWarning("Process failed to start:\n%s\n", m_process->errorString().toLatin1().constData());
+		ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(tr("Oups, failed to create MediaInfo process!")));
 		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to create MediaInfo process!"), QMessageBox::Ok);
 		m_floatingLabel->hide();
 		ui->actionOpen->setEnabled(true);
@@ -585,5 +610,15 @@ bool CMainWindow::analyzeFile(const QString &filePath)
 		return false;
 	}
 
+	qDebug("Process started successfully (PID: %u)", m_process->pid()->dwProcessId);
 	return true;
+}
+
+void CMainWindow::escapeHtmlChars(QStringList &strings)
+{
+	QList<QPair<const QString, const QString>>::ConstIterator iter;
+	for(iter = m_htmlEscape.constBegin(); iter != m_htmlEscape.constEnd(); iter++)
+	{
+		strings.replaceInStrings((*iter).first, (*iter).second);
+	}
 }

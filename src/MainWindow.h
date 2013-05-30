@@ -71,7 +71,10 @@ private:
 	QLabel *m_floatingLabel;
 	QString m_droppedFile;
 	QStringList m_outputLines;
+	
+	const QList<QPair<const QString, const QString>> m_htmlEscape;
 
 	QString getMediaInfoPath(void);
+	void escapeHtmlChars(QStringList &strings);
 	bool analyzeFile(const QString &filePath);
 };
