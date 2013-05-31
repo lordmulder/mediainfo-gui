@@ -50,7 +50,7 @@
 
 //Text
 const char *STATUS_BLNK = ">> You can drop any type of media files here <<";
-const char *STATUS_WORK = "Analyzing file(s), this may take a moment or two...";
+const char *STATUS_WORK = "Analyzing file(s), this may take a moment or two...<br><br><br><br><img src=\":/res/loading.png\">";
 
 //Links
 const char *LINK_MULDER = "http://muldersoft.com/";
