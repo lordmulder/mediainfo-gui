@@ -42,6 +42,8 @@ public:
 	~CMainWindow(void);
 
 private slots:
+	void analyzeFiles(void);
+	void analyzeNextFile(void);
 	void analyzeButtonClicked(void);
 	void saveButtonClicked(void);
 	void copyToClipboardButtonClicked(void);
@@ -50,7 +52,7 @@ private slots:
 	void processFinished(void);
 	void linkTriggered(void);
 	void showAboutScreen(void);
-	void handleDroppedFile(void);
+	void updateSize(void);
 
 protected:
 	virtual void showEvent(QShowEvent *event);
@@ -59,6 +61,7 @@ protected:
 	virtual void dragEnterEvent(QDragEnterEvent *event);
 	virtual void dropEvent(QDropEvent *event);
 	virtual bool eventFilter(QObject *o, QEvent *e);
+	virtual void keyPressEvent(QKeyEvent *e);
 
 private:
 	Ui::MainWindow *ui; //for Qt UIC
@@ -69,12 +72,11 @@ private:
 	HANDLE m_mediaInfoHandle;
 	QProcess *m_process;
 	QLabel *m_floatingLabel;
-	QString m_droppedFile;
+	QStringList m_pendingFiles;
 	QStringList m_outputLines;
 	
 	const QList<QPair<const QString, const QString>> m_htmlEscape;
 
 	QString getMediaInfoPath(void);
 	void escapeHtmlChars(QStringList &strings);
-	bool analyzeFile(const QString &filePath);
 };

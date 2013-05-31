@@ -50,7 +50,7 @@
 
 //Text
 const char *STATUS_BLNK = ">> You can drop any type of media files here <<";
-const char *STATUS_WORK = "Analyzing file, this may take a moment or two...";
+const char *STATUS_WORK = "Analyzing file(s), this may take a moment or two...";
 
 //Links
 const char *LINK_MULDER = "http://muldersoft.com/";
@@ -154,6 +154,7 @@ void CMainWindow::showEvent(QShowEvent *event)
 
 	//Force resize event
 	resizeEvent(NULL);
+	QTimer::singleShot(0, this, SLOT(updateSize()));
 
 	//Enable drag & drop support
 	setAcceptDrops(true);
@@ -170,14 +171,16 @@ void CMainWindow::showEvent(QShowEvent *event)
 					QFileInfo currentFile = QFileInfo(*iter);
 					if(currentFile.exists() && currentFile.isFile())
 					{
-						m_droppedFile = currentFile.canonicalFilePath();
-						QTimer::singleShot(0, this, SLOT(handleDroppedFile()));
-						break;
+						m_pendingFiles << currentFile.canonicalFilePath();
 					}
 					continue;
 				}
 				break;
 			}
+		}
+		if(!m_pendingFiles.empty())
+		{
+			QTimer::singleShot(0, this, SLOT(analyzeFiles()));
 		}
 		m_firstShow = false;
 	}
@@ -200,10 +203,7 @@ void CMainWindow::resizeEvent(QResizeEvent *event)
 	{
 		QMainWindow::resizeEvent(event);
 	}
-	if(const QWidget *const viewPort = ui->textBrowser->viewport())
-	{
-		m_floatingLabel->setGeometry(0, 0, viewPort->width(), viewPort->height());
-	}
+	updateSize();
 }
 
 void CMainWindow::dragEnterEvent(QDragEnterEvent *event)
@@ -224,7 +224,13 @@ void CMainWindow::dragEnterEvent(QDragEnterEvent *event)
 
 void CMainWindow::dropEvent(QDropEvent *event)
 {
-	QStringList droppedFiles;
+	if(m_process && (m_process->state() != QProcess::NotRunning))
+	{
+		qWarning("Process is still running!\n");
+		return;
+	}
+
+	m_pendingFiles.clear();
 	QList<QUrl> urls = event->mimeData()->urls();
 
 	while(!urls.isEmpty())
@@ -233,9 +239,25 @@ void CMainWindow::dropEvent(QDropEvent *event)
 		QFileInfo file(currentUrl.toLocalFile());
 		if(file.exists() && file.isFile())
 		{
-			m_droppedFile = file.canonicalFilePath();
-			QTimer::singleShot(0, this, SLOT(handleDroppedFile()));
-			break;
+			m_pendingFiles << file.canonicalFilePath();
+		}
+	}
+
+	if(!m_pendingFiles.isEmpty())
+	{
+		QTimer::singleShot(0, this, SLOT(analyzeFiles()));
+	}
+}
+
+void CMainWindow::keyPressEvent(QKeyEvent *e)
+{
+	if(e->key() == Qt::Key_Escape)
+	{
+		if(m_process && (m_process->state() != QProcess::NotRunning))
+		{
+			MessageBeep(MB_ICONERROR);
+			qWarning("Escape pressed, terminated process!");
+			m_process->kill();
 		}
 	}
 }
@@ -254,17 +276,126 @@ bool CMainWindow::eventFilter(QObject *o, QEvent *e)
 // SLOTS
 ////////////////////////////////////////////////////////////
 
+void CMainWindow::analyzeFiles(void)
+{
+	//Any files pending?
+	if(m_pendingFiles.isEmpty())
+	{
+		qDebug("No pending files, nothing to do!\n");
+		return;
+	}
+	
+	//Create process, if not done yet
+	if(!m_process)
+	{
+		m_process = new QProcess();
+		m_process->setProcessChannelMode(QProcess::MergedChannels);
+		m_process->setReadChannel(QProcess::StandardOutput);
+		connect(m_process, SIGNAL(readyReadStandardError()), this, SLOT(outputAvailable()));
+		connect(m_process, SIGNAL(readyReadStandardOutput()), this, SLOT(outputAvailable()));
+		connect(m_process, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(processFinished()));
+		connect(m_process, SIGNAL(error(QProcess::ProcessError)), this, SLOT(processFinished()));
+	}
+
+	//Still running?
+	if(m_process->state() != QProcess::NotRunning)
+	{
+		qWarning("Process is still running!\n");
+		return;
+	}
+
+	//Clear data
+	ui->textBrowser->clear();
+	m_outputLines.clear();
+
+	//Disable buttons
+	ui->analyzeButton->setEnabled(false);
+	ui->exitButton->setEnabled(false);
+	ui->actionClear->setEnabled(false);
+	ui->actionCopyToClipboard->setEnabled(false);
+	ui->actionSave->setEnabled(false);
+	ui->actionOpen->setEnabled(false);
+
+	//Show banner
+	m_floatingLabel->show();
+	m_floatingLabel->setText(QString::fromLatin1(STATUS_WORK));
+	m_floatingLabel->setCursor(Qt::WaitCursor);
+	
+	//Trigger GUI update
+	QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+	//Give it a go!
+	QTimer::singleShot(0, this, SLOT(analyzeNextFile()));
+}
+
+void CMainWindow::analyzeNextFile(void)
+{
+	if(m_pendingFiles.isEmpty())
+	{
+		qWarning("Oups, no pending files!");
+		return;
+	}
+
+	//Lookup MediaInfo path
+	const QString mediaInfoPath = getMediaInfoPath();
+	if(mediaInfoPath.isEmpty())
+	{
+		ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(tr("Oups, failed to extract MediaInfo binary!")));
+		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to extract MediaInfo binary!"), QMessageBox::Ok);
+		m_floatingLabel->hide();
+		ui->actionOpen->setEnabled(true);
+		ui->analyzeButton->setEnabled(true);
+		ui->exitButton->setEnabled(true);
+		return;
+	}
+
+	const QString filePath = m_pendingFiles.takeFirst();
+
+	//Start analyziation
+	qDebug("Analyzing media file:\n%s\n", filePath.toUtf8().constData());
+	m_process->start(mediaInfoPath, QStringList() << QDir::toNativeSeparators(filePath));
+
+	//Wait for process to start
+	if(!m_process->waitForStarted())
+	{
+		qWarning("Process failed to start:\n%s\n", m_process->errorString().toLatin1().constData());
+		ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(tr("Oups, failed to create MediaInfo process!")));
+		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to create MediaInfo process!"), QMessageBox::Ok);
+		m_floatingLabel->hide();
+		ui->actionOpen->setEnabled(true);
+		ui->analyzeButton->setEnabled(true);
+		ui->exitButton->setEnabled(true);
+		return;
+	}
+
+	qDebug("Process started successfully (PID: %u)", m_process->pid()->dwProcessId);
+}
+
 void CMainWindow::analyzeButtonClicked(void)
 {
-	const QString selectedFile = QFileDialog::getOpenFileName(this, tr("Select file to analyze..."), QString(), tr("All supported media files (*.*)"));
-	if(!selectedFile.isEmpty())
+	if(m_process && (m_process->state() != QProcess::NotRunning))
 	{
-		analyzeFile(selectedFile);
+		qWarning("Process is still running!\n");
+		return;
+	}
+
+	const QStringList selectedFiles = QFileDialog::getOpenFileNames(this, tr("Select file to analyze..."), QString(), tr("All supported media files (*.*)"));
+	if(!selectedFiles.isEmpty())
+	{
+		m_pendingFiles.clear();
+		m_pendingFiles << selectedFiles;
+		analyzeFiles();
 	}
 }
 
 void CMainWindow::saveButtonClicked(void)
 {
+	if(m_process && (m_process->state() != QProcess::NotRunning))
+	{
+		qWarning("Process is still running!\n");
+		return;
+	}
+		
 	const QString selectedFile = QFileDialog::getSaveFileName(this, tr("Select file to save..."), QString(), tr("Plain Text (*.txt)"));
 	if(!selectedFile.isEmpty())
 	{
@@ -284,6 +415,12 @@ void CMainWindow::saveButtonClicked(void)
 
 void CMainWindow::copyToClipboardButtonClicked(void)
 {
+	if(m_process && (m_process->state() != QProcess::NotRunning))
+	{
+		qWarning("Process is still running!\n");
+		return;
+	}
+
 	if(QClipboard *clipboard = QApplication::clipboard())
 	{
 		clipboard->setText(m_outputLines.join("\n"));
@@ -293,17 +430,16 @@ void CMainWindow::copyToClipboardButtonClicked(void)
 
 void CMainWindow::clearButtonClicked(void)
 {
-	if(m_process)
+	if(m_process && (m_process->state() != QProcess::NotRunning))
 	{
-		if(m_process->state() != QProcess::NotRunning)
-		{
-			return;
-		}
+		qWarning("Process is still running!\n");
+		return;
 	}
 
 	//Clear data and re-show banner
 	ui->textBrowser->clear();
-	m_floatingLabel->setText(STATUS_BLNK);
+	m_floatingLabel->setText(QString::fromLatin1(STATUS_BLNK));
+	m_floatingLabel->setCursor(Qt::ArrowCursor);
 	m_floatingLabel->show();
 
 	//Disable actions
@@ -314,38 +450,16 @@ void CMainWindow::clearButtonClicked(void)
 
 void CMainWindow::outputAvailable(void)
 {
-
-	
 	if(m_process)
 	{
-		bool bDataChanged = false;
-
 		//Update lines
 		while(m_process->canReadLine())
 		{
-			bDataChanged = true;
 			QString line = QString::fromUtf8(m_process->readLine()).trimmed();
 			if(!(line.isEmpty() && m_outputLines.empty()))
 			{
 				m_outputLines << line;
 			}
-		}
-
-		if(bDataChanged)
-		{
-			//Hide banner
-			if(m_floatingLabel->isVisible()) m_floatingLabel->hide();
-
-			//Convert to HTML
-			QStringList htmlData(m_outputLines);
-			escapeHtmlChars(htmlData);
-
-			//Highlight headers
-			htmlData.replaceInStrings(QRegExp("^([^:]+):(.+)$"), "<font color=\"darkblue\">\\1:</font>\\2");
-			htmlData.replaceInStrings(QRegExp("^([^:]+)$"), "<b><font color=\"darkred\">\\1</font></b>");
-
-			//Update document
-			ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(htmlData.join("<br>")));
 		}
 	}
 }
@@ -355,11 +469,54 @@ void CMainWindow::processFinished(void)
 	//Fetch any remaining data
 	outputAvailable();
 	
+	//Remove trailing blank lines
+	while((!m_outputLines.isEmpty()) && m_outputLines.last().trimmed().isEmpty())
+	{
+		m_outputLines.takeLast();
+	}
+
 	//Failed?
 	if(m_outputLines.empty())
 	{
-		ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(tr("Oups, apparently MediaInfo encountered a problem :-(")));
+		m_outputLines << tr("Oups, apparently MediaInfo encountered a problem!");
 	}
+
+	//Append one last linebreak
+	m_outputLines << "";
+
+	//Scroll up
+	ui->textBrowser->verticalScrollBar()->setValue(0);
+	ui->textBrowser->horizontalScrollBar()->setValue(0);
+
+	//Check exit code
+	const int exitCode = m_process->exitCode();
+	qDebug("Process has finished (Code: %d)\n", exitCode);
+
+	//More files left?
+	if(!m_pendingFiles.isEmpty() && (exitCode == 0))
+	{
+		if(!m_outputLines.empty())
+		{
+			m_outputLines << QString().fill('-', 104) << "";
+		}
+		QTimer::singleShot(0, this, SLOT(analyzeNextFile()));
+		return;
+	}
+
+	//Hide banner
+	if(m_floatingLabel->isVisible()) m_floatingLabel->hide();
+
+	//Convert to HTML
+	QStringList htmlData(m_outputLines);
+	escapeHtmlChars(htmlData);
+
+	//Highlight headers
+	htmlData.replaceInStrings(QRegExp("^(-+)$"), "<font color=\"darkgray \">\\1</font>");				//Separator lines
+	htmlData.replaceInStrings(QRegExp("^([^:<>]+):(.+)$"), "<font color=\"darkblue\">\\1:</font>\\2");	//Info lines
+	htmlData.replaceInStrings(QRegExp("^([^:<>]+)$"), "<b><font color=\"darkred\">\\1</font></b>");		//Heading lines
+
+	//Update document
+	ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(htmlData.join("<br>")));
 
 	//Enable actions
 	if(!m_outputLines.empty())
@@ -368,16 +525,9 @@ void CMainWindow::processFinished(void)
 		ui->actionCopyToClipboard->setEnabled(true);
 		ui->actionSave->setEnabled(true);
 	}
-	
 	ui->actionOpen->setEnabled(true);
 	ui->analyzeButton->setEnabled(true);
 	ui->exitButton->setEnabled(true);
-
-	//Scroll up
-	ui->textBrowser->verticalScrollBar()->setValue(0);
-	ui->textBrowser->horizontalScrollBar()->setValue(0);
-
-	qDebug("Process has finished (Code: %d)\n", m_process->exitCode());
 }
 
 void CMainWindow::linkTriggered(void)
@@ -391,10 +541,16 @@ void CMainWindow::linkTriggered(void)
 
 void CMainWindow::showAboutScreen(void)
 {
-	QString text;
+	if(m_process && (m_process->state() != QProcess::NotRunning))
+	{
+		qWarning("Process is still running!\n");
+		return;
+	}
 
 	const QDate buildDate = mixp_get_build_date();
 	const QDate curntDate = mixp_get_current_date();
+
+	QString text;
 
 	text += QString().sprintf("<nobr><tt><b>MediaInfoXP v%u.%02u - Simple GUI for MediaInfo</b><br>", mixp_versionMajor, mixp_versionMinor);
 	text += QString().sprintf("Copyright (c) 2004-%04d LoRd_MuldeR &lt;mulder2@gmx.de&gt;. Some rights reserved.<br>", qMax(buildDate.year(),curntDate.year()));
@@ -438,12 +594,11 @@ void CMainWindow::showAboutScreen(void)
 	}
 }
 
-void CMainWindow::handleDroppedFile(void)
+void CMainWindow::updateSize(void)
 {
-	if(!m_droppedFile.isEmpty())
+	if(const QWidget *const viewPort = ui->textBrowser->viewport())
 	{
-		analyzeFile(m_droppedFile);
-		m_droppedFile.clear();
+		m_floatingLabel->setGeometry(viewPort->x(), viewPort->y(), viewPort->width(), viewPort->height());
 	}
 }
 
@@ -538,80 +693,6 @@ QString CMainWindow::getMediaInfoPath(void)
 	VALIDATE_MEDIAINFO(m_mediaInfoHandle);
 
 	return m_mediaInfoPath;
-}
-
-bool CMainWindow::analyzeFile(const QString &filePath)
-{
-	//Create process, if not done yet
-	if(!m_process)
-	{
-		m_process = new QProcess();
-		m_process->setProcessChannelMode(QProcess::MergedChannels);
-		m_process->setReadChannel(QProcess::StandardOutput);
-		connect(m_process, SIGNAL(readyReadStandardError()), this, SLOT(outputAvailable()));
-		connect(m_process, SIGNAL(readyReadStandardOutput()), this, SLOT(outputAvailable()));
-		connect(m_process, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(processFinished()));
-		connect(m_process, SIGNAL(error(QProcess::ProcessError)), this, SLOT(processFinished()));
-	}
-
-	//Still running?
-	if(m_process->state() != QProcess::NotRunning)
-	{
-		qWarning("Process is still running!\n");
-		return false;
-	}
-
-	//Clear data
-	ui->textBrowser->clear();
-	m_outputLines.clear();
-
-	//Disable buttons
-	ui->analyzeButton->setEnabled(false);
-	ui->exitButton->setEnabled(false);
-	ui->actionClear->setEnabled(false);
-	ui->actionCopyToClipboard->setEnabled(false);
-	ui->actionSave->setEnabled(false);
-	ui->actionOpen->setEnabled(false);
-
-	//Show banner
-	m_floatingLabel->show();
-	m_floatingLabel->setText(QString::fromLatin1(STATUS_WORK));
-	
-	//Update
-	qApp->processEvents(QEventLoop::ExcludeUserInputEvents);
-
-	//Lookup MediaInfo path
-	const QString mediaInfoPath = getMediaInfoPath();
-	if(mediaInfoPath.isEmpty())
-	{
-		ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(tr("Oups, failed to extract MediaInfo binary!")));
-		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to extract MediaInfo binary!"), QMessageBox::Ok);
-		m_floatingLabel->hide();
-		ui->actionOpen->setEnabled(true);
-		ui->analyzeButton->setEnabled(true);
-		ui->exitButton->setEnabled(true);
-		return false;
-	}
-
-	//Start analyziation
-	qDebug("Analyzing media file:\n%s\n", filePath.toUtf8().constData());
-	m_process->start(mediaInfoPath, QStringList() << QDir::toNativeSeparators(filePath));
-
-	//Wait for process to start
-	if(!m_process->waitForStarted())
-	{
-		qWarning("Process failed to start:\n%s\n", m_process->errorString().toLatin1().constData());
-		ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(tr("Oups, failed to create MediaInfo process!")));
-		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to create MediaInfo process!"), QMessageBox::Ok);
-		m_floatingLabel->hide();
-		ui->actionOpen->setEnabled(true);
-		ui->analyzeButton->setEnabled(true);
-		ui->exitButton->setEnabled(true);
-		return false;
-	}
-
-	qDebug("Process started successfully (PID: %u)", m_process->pid()->dwProcessId);
-	return true;
 }
 
 void CMainWindow::escapeHtmlChars(QStringList &strings)
