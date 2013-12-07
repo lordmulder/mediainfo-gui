@@ -2,8 +2,8 @@
 REM ///////////////////////////////////////////////////////////////////////////
 REM // Set Paths
 REM ///////////////////////////////////////////////////////////////////////////
-set "MSVC_PATH=C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC"
-set "QTVC_PATH=C:\Qt\4.8.4"
+set "MSVC_PATH=C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC"
+set "QTVC_PATH=C:\Qt\4.8.5"
 set "UPX3_PATH=C:\UPX"
 
 REM ###############################################

@@ -30,7 +30,8 @@ namespace Ui {
 }
 class QProcess;
 class QLabel;
-typedef void *HANDLE;
+class QFile;
+class mixp_icon_t;
 
 //MainWindow class
 class CMainWindow: public QMainWindow
@@ -68,12 +69,12 @@ private:
 	
 	const QString &m_tempFolder;
 	bool m_firstShow;
-	QString m_mediaInfoPath;
-	HANDLE m_mediaInfoHandle;
+	QFile *m_mediaInfoHandle;
 	QProcess *m_process;
 	QLabel *m_floatingLabel;
 	QStringList m_pendingFiles;
 	QStringList m_outputLines;
+	mixp_icon_t *m_icon;
 	
 	const QList<QPair<const QString, const QString>> m_htmlEscape;
 

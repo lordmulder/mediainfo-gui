@@ -25,14 +25,32 @@
 #include <QFile>
 
 class QDate;
+class QWidget;
+class QIcon;
+class mixp_icon_t;
 
 //Helper macros
 #define MIXP_DELETE_OBJ(PTR) do { if((PTR)) { delete ((PTR)); (PTR) = NULL; } } while (0)
 #define MIXP_DELETE_ARR(PTR) do { if((PTR)) { delete [] ((PTR)); (PTR) = NULL; } } while (0)
 #define QWCHAR(STR) reinterpret_cast<const wchar_t*>(STR.utf16())
 
+//Beep types
+typedef enum
+{
+	mixp_beep_info = 0,
+	mixp_beep_warning = 1,
+	mixp_beep_error = 2
+}
+mixp_beep_t;
+
 //Utils
 QString mixp_getTempFolder(QFile **lockfile);
-void mixp_clean_folder(const QString &folderPath);
+bool mixp_clean_folder(const QString &folderPath);
 QDate mixp_get_build_date(void);
 QDate mixp_get_current_date(void);
+mixp_icon_t *mixp_set_window_icon(QWidget *window, const QIcon &icon, const bool bIsBigIcon);
+void mixp_free_window_icon(mixp_icon_t *icon);
+bool mixp_beep(int beepType);
+
+//Init
+void _mixp_global_init(void);

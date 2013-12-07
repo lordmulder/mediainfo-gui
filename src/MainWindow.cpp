@@ -36,9 +36,12 @@
 #include <QDesktopServices>
 #include <QClipboard>
 
+//CRT
+#include <ctime>
+
 //Win32
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+//#define WIN32_LEAN_AND_MEAN
+//#include <Windows.h>
 
 //Internal
 #include "Config.h"
@@ -84,6 +87,9 @@ CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
 	ui->setupUi(this);
 	setMinimumSize(this->size());
 
+	//Setup Icon
+	m_icon = mixp_set_window_icon(this, QIcon(":/res/logo.png"), true);
+
 	//Setup links
 	ui->actionLink_MuldeR->setData(QVariant(QString::fromLatin1(LINK_MULDER)));
 	ui->actionLink_MediaInfo->setData(QVariant(QString::fromLatin1(LINK_MEDIAINFO)));
@@ -116,9 +122,11 @@ CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
 	m_floatingLabel->insertActions(0, ui->textBrowser->actions());
 	
 	//Clear
-	m_mediaInfoPath.clear();
-	m_mediaInfoHandle = INVALID_HANDLE_VALUE;
+	m_mediaInfoHandle = NULL;
 	m_process = NULL;
+
+	//Randomize
+	qsrand((uint) time(NULL));
 }
 
 ////////////////////////////////////////////////////////////
@@ -127,13 +135,15 @@ CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
 
 CMainWindow::~CMainWindow(void)
 {
-	if(m_mediaInfoHandle != INVALID_HANDLE_VALUE)
+	if(m_mediaInfoHandle != NULL)
 	{
-		CloseHandle(m_mediaInfoHandle);
-		m_mediaInfoHandle = INVALID_HANDLE_VALUE;
+		m_mediaInfoHandle->remove();
+		MIXP_DELETE_OBJ(m_mediaInfoHandle);
 	}
 	MIXP_DELETE_OBJ(m_process);
 	MIXP_DELETE_OBJ(m_floatingLabel);
+
+	mixp_free_window_icon(m_icon);
 }
 
 ////////////////////////////////////////////////////////////
@@ -255,7 +265,7 @@ void CMainWindow::keyPressEvent(QKeyEvent *e)
 	{
 		if(m_process && (m_process->state() != QProcess::NotRunning))
 		{
-			MessageBeep(MB_ICONERROR);
+			mixp_beep(mixp_beep_error);
 			qWarning("Escape pressed, terminated process!");
 			m_process->kill();
 		}
@@ -368,7 +378,7 @@ void CMainWindow::analyzeNextFile(void)
 		return;
 	}
 
-	qDebug("Process started successfully (PID: %u)", m_process->pid()->dwProcessId);
+	qDebug("Process started successfully (PID: %u)", 42); //m_process->pid()->dwProcessId);
 }
 
 void CMainWindow::analyzeButtonClicked(void)
@@ -404,7 +414,7 @@ void CMainWindow::saveButtonClicked(void)
 		{
 			file.write(m_outputLines.join("\r\n").toUtf8());
 			file.close();
-			MessageBeep(MB_ICONINFORMATION);
+			mixp_beep(mixp_beep_info);
 		}
 		else
 		{
@@ -424,7 +434,7 @@ void CMainWindow::copyToClipboardButtonClicked(void)
 	if(QClipboard *clipboard = QApplication::clipboard())
 	{
 		clipboard->setText(m_outputLines.join("\n"));
-		MessageBeep(MB_ICONINFORMATION);
+		mixp_beep(mixp_beep_info);
 	}
 }
 
@@ -511,7 +521,7 @@ void CMainWindow::processFinished(void)
 	escapeHtmlChars(htmlData);
 
 	//Highlight headers
-	htmlData.replaceInStrings(QRegExp("^(-+)$"), "<font color=\"darkgray \">\\1</font>");				//Separator lines
+	htmlData.replaceInStrings(QRegExp("^(-+)$"), "<font color=\"darkgray\">\\1</font>");				//Separator lines
 	htmlData.replaceInStrings(QRegExp("^([^:<>]+):(.+)$"), "<font color=\"darkblue\">\\1:</font>\\2");	//Info lines
 	htmlData.replaceInStrings(QRegExp("^([^:<>]+)$"), "<b><font color=\"darkred\">\\1</font></b>");		//Heading lines
 
@@ -608,18 +618,15 @@ void CMainWindow::updateSize(void)
 
 #define VALIDATE_MEDIAINFO(HANDLE) do \
 { \
-	if(HANDLE != INVALID_HANDLE_VALUE) \
+	if((HANDLE)) \
 	{ \
-		QByteArray buffer(mediaInfoRes.size(), '\0'); DWORD bytesRead = 0; \
-		if(GetFileSize(HANDLE, NULL) == mediaInfoRes.size()) \
-		{ \
-			SetFilePointer(HANDLE, 0L, NULL, FILE_BEGIN); \
-			ReadFile(HANDLE, buffer.data(), mediaInfoRes.size(), &bytesRead, NULL); \
-		} \
-		if(memcmp(buffer.constData(), mediaInfoRes.data(), mediaInfoRes.size()) != 0) \
+		(HANDLE)->seek(0); \
+		QByteArray buffer = (HANDLE)->readAll(); \
+		if((buffer.size() != mediaInfoRes.size()) || (memcmp(buffer.constData(), mediaInfoRes.data(), mediaInfoRes.size()) != 0)) \
 		{ \
 			qWarning("MediaInfo binary failed to validate!"); \
-			m_mediaInfoPath.clear(); \
+			(HANDLE)->remove(); \
+			MIXP_DELETE_OBJ((HANDLE)); \
 		} \
 	} \
 } \
@@ -628,71 +635,52 @@ while(0)
 QString CMainWindow::getMediaInfoPath(void)
 {
 	QResource mediaInfoRes(":/res/MediaInfo.i386.exe");
-	if(!mediaInfoRes.isValid())
+	if((!mediaInfoRes.isValid()) || (!mediaInfoRes.data()))
 	{
 		qFatal("MediaInfo resource could not be initialized!");
 		return QString();
 	}
 	
-	//Already existsing?
-	if(!m_mediaInfoPath.isEmpty())
-	{
-		QFileInfo mediaInfoNfo(m_mediaInfoPath);
-		if(!(mediaInfoNfo.exists() && mediaInfoNfo.isFile()))
-		{
-			qWarning("MediaInfo binary does NOT seem to exist any longer!\n");
-			m_mediaInfoPath.clear();
-		}
-	}
-
 	//Validate file content
 	VALIDATE_MEDIAINFO(m_mediaInfoHandle);
 
 	//Extract MediaInfo
-	if(m_mediaInfoPath.isEmpty())
+	if(!m_mediaInfoHandle)
 	{
 		qDebug("MediaInfo binary not existing yet, going to extract now...\n");
-		if(m_mediaInfoHandle != INVALID_HANDLE_VALUE)
+		m_mediaInfoHandle = new QFile(QString("%1/MediaInfo_%2.exe").arg(m_tempFolder, QString().sprintf("%04x", qrand() % 0xFFFF)));
+		if(m_mediaInfoHandle->open(QIODevice::ReadWrite | QIODevice::Truncate))
 		{
-			CloseHandle(m_mediaInfoHandle);
-			m_mediaInfoHandle = INVALID_HANDLE_VALUE;
-		}
-		QString path = QString("%1/MediaInfo.exe").arg(m_tempFolder);
-		QFile mediaInfoFile(path);
-		if(mediaInfoFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
-		{
-			if(mediaInfoFile.write(reinterpret_cast<const char*>(mediaInfoRes.data()), mediaInfoRes.size()) == mediaInfoRes.size())
+			if(m_mediaInfoHandle->write(reinterpret_cast<const char*>(mediaInfoRes.data()), mediaInfoRes.size()) == mediaInfoRes.size())
 			{
-				m_mediaInfoPath = path;
-				qDebug("MediaInfo path is:\n%s\n", m_mediaInfoPath.toUtf8().constData());
+				qDebug("MediaInfo path is:\n%s\n", m_mediaInfoHandle->fileName().toUtf8().constData());
+				m_mediaInfoHandle->close();
+				if(!m_mediaInfoHandle->open(QIODevice::ReadOnly))
+				{
+					qWarning("Failed to open MediaInfo binary for reading!\n");
+					m_mediaInfoHandle->remove();
+					MIXP_DELETE_OBJ(m_mediaInfoHandle);
+				}
 			}
 			else
 			{
 				qWarning("Failed to write data to MediaInfo binary file!\n");
+				m_mediaInfoHandle->remove();
+				MIXP_DELETE_OBJ(m_mediaInfoHandle);
 			}
-			mediaInfoFile.close();
 		}
 		else
 		{
 			qWarning("Failed to open MediaInfo binary for writing!\n");
-		}
-	}
-
-	//Open file for reading
-	if((!m_mediaInfoPath.isEmpty()) && (m_mediaInfoHandle == INVALID_HANDLE_VALUE))
-	{
-		m_mediaInfoHandle = CreateFileW(QWCHAR(QDir::toNativeSeparators(m_mediaInfoPath)), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, 0);
-		if(m_mediaInfoHandle == INVALID_HANDLE_VALUE)
-		{
-			qWarning("Failed to open the MediaInfo binary for reading!\n");
-			m_mediaInfoPath.clear();
+			MIXP_DELETE_OBJ(m_mediaInfoHandle);
 		}
 	}
 
 	//Validate file content
 	VALIDATE_MEDIAINFO(m_mediaInfoHandle);
 
-	return m_mediaInfoPath;
+	//Return current MediaInfo path
+	return m_mediaInfoHandle ? m_mediaInfoHandle->fileName() : QString();
 }
 
 void CMainWindow::escapeHtmlChars(QStringList &strings)

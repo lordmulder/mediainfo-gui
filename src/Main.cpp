@@ -24,6 +24,7 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>
+#include <signal.h>
 
 #pragma intrinsic(_InterlockedExchange)
 
@@ -159,6 +160,12 @@ void mixp_invalid_param_handler(const wchar_t* exp, const wchar_t* fun, const wc
 	mixp_fatal_exit(L"Invalid parameter handler invoked, application will exit!");
 }
 
+static void mixp_signal_handler(int signal_num)
+{
+	signal(signal_num, mixp_signal_handler);
+	mixp_fatal_exit(L"Signal handler invoked, application will exit!");
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Message Handler
 ///////////////////////////////////////////////////////////////////////////////
@@ -267,14 +274,26 @@ int main(int argc, char* argv[])
 {
 	if(MIXP_DEBUG)
 	{
+		_mixp_global_init();
 		return _main(argc, argv);
 	}
 	else
 	{
 		__try
 		{
+			SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);
 			SetUnhandledExceptionFilter(mixp_exception_handler);
+			SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
 			_set_invalid_parameter_handler(mixp_invalid_param_handler);
+	
+			static const int signal_num[6] = { SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIGTERM };
+
+			for(size_t i = 0; i < 6; i++)
+			{
+				signal(signal_num[i], mixp_signal_handler);
+			}
+
+			_mixp_global_init();
 			return _main(argc, argv);
 		}
 		__except(1)

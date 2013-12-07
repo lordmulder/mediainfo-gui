@@ -22,6 +22,14 @@
 #include "Utils.h"
 #include "Config.h"
 
+//Win32
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <io.h>
+#include <fcntl.h>
+#include <Objbase.h>
+#include <Psapi.h>
+
 //StdLib
 #include <cstdio>
 #include <iostream>
@@ -36,45 +44,70 @@
 #include <QFileInfo>
 #include <QUuid>
 #include <QDate>
+#include <QReadWriteLock>
+#include <QMap>
+#include <QIcon>
+#include <QWidget>
 
-//Win32
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <io.h>
-#include <fcntl.h>
-#include <Objbase.h>
-#include <Psapi.h>
+//Function pointers
+typedef HRESULT (WINAPI *SHGetKnownFolderPath_t)(const GUID &rfid, DWORD dwFlags, HANDLE hToken, PWSTR *ppszPath);
+typedef HRESULT (WINAPI *SHGetFolderPath_t)(HWND hwndOwner, int nFolder, HANDLE hToken, DWORD dwFlags, LPWSTR pszPath);
+
+//Known folders
+typedef enum
+{
+	mixp_folder_localappdata = 0,
+	mixp_folder_programfiles = 2,
+	mixp_folder_systemfolder = 3,
+	mixp_folder_systroot_dir = 4
+}
+mixp_known_folder_t;
+
+//Known folder cache
+static struct
+{
+	bool initialized;
+	QMap<size_t, QString> knownFolders;
+	SHGetKnownFolderPath_t getKnownFolderPath;
+	SHGetFolderPath_t getFolderPath;
+	QReadWriteLock lock;
+}
+g_mixp_known_folder;
 
 /*
  * Try to lock folder
  */
-QString mixp_tryLockFolder(const QString &folderPath, QFile **lockfile)
+static QString mixp_tryLockFolder(const QString &folderPath, QFile **lockfile)
 {
-	const QString SUB_FOLDER = QUuid::createUuid().toString();
-	const QByteArray WRITE_TEST_DATA = QByteArray("Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.");
+	const QByteArray WRITE_TEST_DATA = QByteArray("Lorem ipsum dolor sit amet, consetetur sadipscing elitr!");
 
-	QDir folder(folderPath);
-	if(!folder.exists())
+	for(int i = 0; i < 32; i++)
 	{
-		folder.mkdir(".");
-	}
-
-	if(folder.exists())
-	{
-		folder.mkdir(SUB_FOLDER);
-		if(folder.cd(SUB_FOLDER) && folder.exists())
+		QDir folder(folderPath);
+		if(!folder.exists())
 		{
-			QFile *testFile = new QFile(QString("%1/~lock.tmp").arg(folder.canonicalPath()));
-			if(testFile->open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Unbuffered))
+			folder.mkdir(".");
+		}
+
+		if(folder.exists())
+		{
+			const QString SUB_FOLDER = QUuid::createUuid().toString().remove('{').remove('}').remove('-').right(16);
+
+			folder.mkdir(SUB_FOLDER);
+			if(folder.cd(SUB_FOLDER) && folder.exists())
 			{
-				if(testFile->write(WRITE_TEST_DATA) >= WRITE_TEST_DATA.size())
+				QFile *testFile = new QFile(QString("%1/~lock.tmp").arg(folder.canonicalPath()));
+				if(testFile->open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Unbuffered))
 				{
-					*lockfile = testFile;
-					return folder.canonicalPath();
+					if(testFile->write(WRITE_TEST_DATA) >= WRITE_TEST_DATA.size())
+					{
+						*lockfile = testFile;
+						return folder.canonicalPath();
+					}
+					testFile->remove();
 				}
-				testFile->remove();
+				MIXP_DELETE_OBJ(testFile);
 			}
-			MIXP_DELETE_OBJ(testFile);
 		}
 	}
 
@@ -82,66 +115,107 @@ QString mixp_tryLockFolder(const QString &folderPath, QFile **lockfile)
 }
 
 /*
- * Get AppData folder
+ * Locate known folder on local system
  */
-QString mixp_getAppDataFolder(void)
+static const QString &mixp_known_folder(mixp_known_folder_t folder_id)
 {
-	typedef HRESULT (WINAPI *SHGetKnownFolderPathFun)(__in const GUID &rfid, __in DWORD dwFlags, __in HANDLE hToken, __out PWSTR *ppszPath);
-	typedef HRESULT (WINAPI *SHGetFolderPathFun)(__in HWND hwndOwner, __in int nFolder, __in HANDLE hToken, __in DWORD dwFlags, __out LPWSTR pszPath);
-
-	static const int CSIDL_LOCAL_APPDATA = 0x001c;
-	static const GUID GUID_LOCAL_APPDATA = {0xF1B32785,0x6FBA,0x4FCF,{0x9D,0x55,0x7B,0x8E,0x7F,0x15,0x70,0x91}};
-
-	SHGetKnownFolderPathFun SHGetKnownFolderPathPtr = NULL;
-	SHGetFolderPathFun SHGetFolderPathPtr = NULL;
-
-	QLibrary kernel32Lib("shell32.dll");
-	if(kernel32Lib.load())
+	static const int CSIDL_FLAG_CREATE = 0x8000;
+	typedef enum { KF_FLAG_CREATE = 0x00008000 } kf_flags_t;
+	
+	struct
 	{
-		SHGetKnownFolderPathPtr = (SHGetKnownFolderPathFun) kernel32Lib.resolve("SHGetKnownFolderPath");
-		SHGetFolderPathPtr = (SHGetFolderPathFun) kernel32Lib.resolve("SHGetFolderPathW");
+		const int csidl;
+		const GUID guid;
+	}
+	static s_folders[] =
+	{
+		{ 0x001c, {0xF1B32785,0x6FBA,0x4FCF,{0x9D,0x55,0x7B,0x8E,0x7F,0x15,0x70,0x91}} },  //CSIDL_LOCAL_APPDATA
+		{ 0x0026, {0x905e63b6,0xc1bf,0x494e,{0xb2,0x9c,0x65,0xb7,0x32,0xd3,0xd2,0x1a}} },  //CSIDL_PROGRAM_FILES
+		{ 0x0024, {0xF38BF404,0x1D43,0x42F2,{0x93,0x05,0x67,0xDE,0x0B,0x28,0xFC,0x23}} },  //CSIDL_WINDOWS_FOLDER
+		{ 0x0025, {0x1AC14E77,0x02E7,0x4E5D,{0xB7,0x44,0x2E,0xB1,0xAE,0x51,0x98,0xB7}} },  //CSIDL_SYSTEM_FOLDER
+	};
+
+	size_t folderId = size_t(-1);
+
+	switch(folder_id)
+	{
+		case mixp_folder_localappdata: folderId = 0; break;
+		case mixp_folder_programfiles: folderId = 1; break;
+		case mixp_folder_systroot_dir: folderId = 2; break;
+		case mixp_folder_systemfolder: folderId = 3; break;
 	}
 
-	QString folder;
-
-	if(SHGetKnownFolderPathPtr)
+	if(folderId == size_t(-1))
 	{
-		qDebug("SHGetKnownFolderPathPtr()\n");
-		WCHAR *path = NULL;
-		if(SHGetKnownFolderPathPtr(GUID_LOCAL_APPDATA, 0x00008000, NULL, &path) == S_OK)
+		qWarning("Invalid 'known' folder was requested!");
+		return *reinterpret_cast<QString*>(NULL);
+	}
+
+	QReadLocker readLock(&g_mixp_known_folder.lock);
+
+	//Already in cache?
+	if(g_mixp_known_folder.knownFolders.contains(folderId))
+	{
+		return g_mixp_known_folder.knownFolders[folderId];
+	}
+
+	//Obtain write lock to initialize
+	readLock.unlock();
+	QWriteLocker writeLock(&g_mixp_known_folder.lock);
+
+	//Still not in cache?
+	if(g_mixp_known_folder.knownFolders.contains(folderId))
+	{
+		return g_mixp_known_folder.knownFolders[folderId];
+	}
+
+	//Initialize on first call
+	if(!g_mixp_known_folder.initialized)
+	{
+		QLibrary shell32("shell32.dll");
+		if(shell32.load())
 		{
+			g_mixp_known_folder.getFolderPath =      (SHGetFolderPath_t)      shell32.resolve("SHGetFolderPathW");
+			g_mixp_known_folder.getKnownFolderPath = (SHGetKnownFolderPath_t) shell32.resolve("SHGetKnownFolderPath");
+		}
+		g_mixp_known_folder.initialized = true;
+	}
+
+	QString folderPath;
+
+	//Now try to get the folder path!
+	if(g_mixp_known_folder.getKnownFolderPath)
+	{
+		WCHAR *path = NULL;
+		if(g_mixp_known_folder.getKnownFolderPath(s_folders[folderId].guid, KF_FLAG_CREATE, NULL, &path) == S_OK)
+		{
+			//MessageBoxW(0, path, L"SHGetKnownFolderPath", MB_TOPMOST);
 			QDir folderTemp = QDir(QDir::fromNativeSeparators(QString::fromUtf16(reinterpret_cast<const unsigned short*>(path))));
-			if(!folderTemp.exists())
-			{
-				folderTemp.mkpath(".");
-			}
 			if(folderTemp.exists())
 			{
-				folder = folderTemp.canonicalPath();
+				folderPath = folderTemp.canonicalPath();
 			}
 			CoTaskMemFree(path);
 		}
 	}
-	else if(SHGetFolderPathPtr)
+	else if(g_mixp_known_folder.getFolderPath)
 	{
-		qDebug("SHGetFolderPathPtr()\n");
 		WCHAR *path = new WCHAR[4096];
-		if(SHGetFolderPathPtr(NULL, CSIDL_LOCAL_APPDATA, NULL, NULL, path) == S_OK)
+		if(g_mixp_known_folder.getFolderPath(NULL, s_folders[folderId].csidl | CSIDL_FLAG_CREATE, NULL, NULL, path) == S_OK)
 		{
+			//MessageBoxW(0, path, L"SHGetFolderPathW", MB_TOPMOST);
 			QDir folderTemp = QDir(QDir::fromNativeSeparators(QString::fromUtf16(reinterpret_cast<const unsigned short*>(path))));
-			if(!folderTemp.exists())
-			{
-				folderTemp.mkpath(".");
-			}
 			if(folderTemp.exists())
 			{
-				folder = folderTemp.canonicalPath();
+				folderPath = folderTemp.canonicalPath();
 			}
 		}
-		delete [] path;
+		MIXP_DELETE_ARR(path);
 	}
 
-	return folder;
+	//Update cache
+	g_mixp_known_folder.knownFolders.insert(folderId, folderPath);
+	return g_mixp_known_folder.knownFolders[folderId];
 }
 
 /*
@@ -158,18 +232,22 @@ QString mixp_getTempFolder(QFile **lockfile)
 		return tempPath;
 	}
 
-	qWarning("Failed to init %%TEMP%%, falling back to %%LOCALAPPDATA%%\n");
+	qWarning("Failed to init %%TEMP%%, falling back to %%LOCALAPPDATA%% or %%SYSTEMROOT%%\n");
 
 	//Create TEMP folder in %LOCALAPPDATA%
-	QString localAppDataPath = mixp_getAppDataFolder();
-	if(!localAppDataPath.isEmpty())
+	for(int i = 0; i < 2; i++)
 	{
-		if(QDir(localAppDataPath).exists())
+		static const mixp_known_folder_t folderId[2] = { mixp_folder_localappdata, mixp_folder_systroot_dir };
+		const QString &localAppDataPath = mixp_known_folder(folderId[i]);
+		if(!localAppDataPath.isEmpty())
 		{
-			tempPath = mixp_tryLockFolder(QString("%1/Temp").arg(localAppDataPath), lockfile);
-			if(!tempPath.isEmpty())
+			if(QDir(localAppDataPath).exists())
 			{
-				return tempPath;
+				tempPath = mixp_tryLockFolder(QString("%1/Temp").arg(localAppDataPath), lockfile);
+				if(!tempPath.isEmpty())
+				{
+					return tempPath;
+				}
 			}
 		}
 	}
@@ -178,36 +256,75 @@ QString mixp_getTempFolder(QFile **lockfile)
 }
 
 /*
- * Clean folder
+ * Safely remove a file
  */
-void mixp_clean_folder(const QString &folderPath)
+static bool mixp_remove_file(const QString &filename)
 {
-	QDir tempFolder(folderPath);
-	QFileInfoList entryList = tempFolder.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot);
-
-	for(int i = 0; i < entryList.count(); i++)
+	if(!QFileInfo(filename).exists() || !QFileInfo(filename).isFile())
 	{
-		if(entryList.at(i).isDir())
+		return true;
+	}
+	else
+	{
+		if(!QFile::remove(filename))
 		{
-			mixp_clean_folder(entryList.at(i).canonicalFilePath());
+			static const DWORD attrMask = FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM;
+			const DWORD attributes = GetFileAttributesW(QWCHAR(filename));
+			if(attributes & attrMask)
+			{
+				SetFileAttributesW(QWCHAR(filename), FILE_ATTRIBUTE_NORMAL);
+			}
+			if(!QFile::remove(filename))
+			{
+				qWarning("Could not delete \"%s\"", filename.toLatin1().constData());
+				return false;
+			}
+			else
+			{
+				return true;
+			}
 		}
 		else
 		{
-			for(int j = 0; j < 5; j++)
-			{
-				if(QFile::remove(entryList.at(i).canonicalFilePath()))
-				{
-					break;
-				}
-			}
+			return true;
 		}
 	}
-	
-	tempFolder.rmdir(".");
 }
 
 /*
  * Clean folder
+ */
+bool mixp_clean_folder(const QString &folderPath)
+{
+	QDir tempFolder(folderPath);
+	if(tempFolder.exists())
+	{
+		QFileInfoList entryList = tempFolder.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden);
+
+		for(int i = 0; i < entryList.count(); i++)
+		{
+			if(entryList.at(i).isDir())
+			{
+				mixp_clean_folder(entryList.at(i).canonicalFilePath());
+			}
+			else
+			{
+				for(int j = 0; j < 3; j++)
+				{
+					if(mixp_remove_file(entryList.at(i).canonicalFilePath()))
+					{
+						break;
+					}
+				}
+			}
+		}
+		return tempFolder.rmdir(".");
+	}
+	return true;
+}
+
+/*
+ * Get build date
  */
 QDate mixp_get_build_date(void)
 {
@@ -240,7 +357,7 @@ QDate mixp_get_build_date(void)
 }
 
 /*
- * Clean folder
+ * Get current date
  */
 QDate mixp_get_current_date(void)
 {
@@ -300,4 +417,70 @@ QDate mixp_get_current_date(void)
 	const QDate currentDate = QDate::currentDate();
 	const QDate processDate = QDate(lastStartTime_system.wYear, lastStartTime_system.wMonth, lastStartTime_system.wDay);
 	return (currentDate >= processDate) ? currentDate : processDate;
+}
+
+/*
+ * Convert QIcon to HICON -> caller is responsible for destroying the HICON!
+ */
+static HICON mixp_qicon2hicon(const QIcon &icon, const int w, const int h)
+{
+	if(!icon.isNull())
+	{
+		QPixmap pixmap = icon.pixmap(w, h);
+		if(!pixmap.isNull())
+		{
+			return pixmap.toWinHICON();
+		}
+	}
+	return NULL;
+}
+
+/*
+ * Update the window icon
+ */
+mixp_icon_t *mixp_set_window_icon(QWidget *window, const QIcon &icon, const bool bIsBigIcon)
+{
+	if(!icon.isNull())
+	{
+		const int extend = (bIsBigIcon ? 32 : 16);
+		if(HICON hIcon = mixp_qicon2hicon(icon, extend, extend))
+		{
+			SendMessage(window->winId(), WM_SETICON, (bIsBigIcon ? ICON_BIG : ICON_SMALL), LPARAM(hIcon));
+			return reinterpret_cast<mixp_icon_t*>(hIcon);
+		}
+	}
+	return NULL;
+}
+
+/*
+ * Free window icon
+ */
+void mixp_free_window_icon(mixp_icon_t *icon)
+{
+	if(HICON hIcon = reinterpret_cast<HICON>(icon))
+	{
+		DestroyIcon(hIcon);
+	}
+}
+
+/*
+ * Message Beep
+ */
+bool mixp_beep(int beepType)
+{
+	switch(beepType)
+	{
+		case mixp_beep_info:    return (MessageBeep(MB_ICONASTERISK) != FALSE);    break;
+		case mixp_beep_warning: return (MessageBeep(MB_ICONEXCLAMATION) != FALSE); break;
+		case mixp_beep_error:   return (MessageBeep(MB_ICONHAND) != FALSE);        break;
+		default: return false;
+	}
+}
+
+/*
+ * Global init
+ */
+void _mixp_global_init(void)
+{
+	g_mixp_known_folder.initialized = false;
 }
