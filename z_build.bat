@@ -102,9 +102,21 @@ if exist "%~dp0\out\%OUT_NAME%.zip" (
 )
 
 REM ///////////////////////////////////////////////////////////////////////////
+REM // Create version tag
+REM ///////////////////////////////////////////////////////////////////////////
+echo MediaInfoXP - Simple GUI for MediaInfo > "%OUT_NAME%.txt"
+echo Built on %ISO_DATE%, at %TIME% >> "%OUT_NAME%.txt"
+echo opyright (C) 2004-2014 LoRd_MuldeR ^<MuldeR2@GMX.de^> >> "%OUT_NAME%.txt"
+echo. >> "%OUT_NAME%.txt"
+echo MediaInfo(Lib) is Copyright (C) 2002-2014 MediaArea.net SARL. >> "%OUT_NAME%.txt"
+echo. >> "%OUT_NAME%.txt"
+
+REM ///////////////////////////////////////////////////////////////////////////
 REM // Build the package
 REM ///////////////////////////////////////////////////////////////////////////
-"%~dp0\etc\7za.exe" a -mm=Deflate -mfb=258 -mpass=15 -r "%~dp0\out\%OUT_NAME%.zip" "%PACK_PATH%\*.*"
+pushd "%PACK_PATH%
+"%~dp0\etc\zip.exe" -9 -r -z "%~dp0\out\%OUT_NAME%.zip" "*.*" < "%OUT_NAME%.txt"
+popd
 rmdir /Q /S "%PACK_PATH%"
 attrib +R "%~dp0\out\%OUT_NAME%.zip"
 
