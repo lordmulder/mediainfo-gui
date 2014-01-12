@@ -57,7 +57,7 @@ const char *STATUS_WORK = "Analyzing file(s), this may take a moment or two...<b
 
 //Links
 const char *LINK_MULDER = "http://muldersoft.com/";
-const char *LINK_MEDIAINFO = "http://mediainfo.sourceforge.net/en";
+const char *LINK_MEDIAINFO = "http://mediaarea.net/en/MediaInfo"; /*"http://mediainfo.sourceforge.net/en"*/
 const char *LINK_DISCUSS = "http://forum.doom9.org/showthread.php?t=96516";
 
 //HTML characters
@@ -572,7 +572,7 @@ void CMainWindow::showAboutScreen(void)
 	text += QString().sprintf("<hr><br>");
 	text += QString().sprintf("This application is powered by MediaInfo v%u.%u.%02u<br>", mixp_miVersionMajor, mixp_miVersionMinor, mixp_miVersionPatch);
 	text += QString().sprintf("Free and OpenSource tool for displaying technical information about media files.<br>");
-	text += QString().sprintf("Copyright (c) 2002-%s MediaArea.net SARL. All rights reserved.<br><br>", &mixp_buildDate[7]);
+	text += QString().sprintf("Copyright (c) 2002-%04d MediaArea.net SARL. All rights reserved.<br><br>", qMax(buildDate.year(),curntDate.year()));
 	text += QString().sprintf("Redistribution and use is permitted according to the (2-Clause) BSD License.<br>");
 	text += QString().sprintf("Please see <a href=\"%s\">%s</a> for more information.<br></tt></nobr>", LINK_MEDIAINFO, LINK_MEDIAINFO);
 
