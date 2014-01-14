@@ -127,6 +127,7 @@
   <ItemGroup>
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\MainWindow.cpp" />
+    <ClCompile Include="src\ShellExtension.cpp" />
     <ClCompile Include="src\Utils.cpp" />
     <ClCompile Include="tmp\Common\moc\MOC_MainWindow.cpp" />
     <ClCompile Include="tmp\Common\rcc\RCC_MediaInfoXP.cpp" />
@@ -143,6 +144,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Config.h" />
+    <ClInclude Include="src\ShellExtension.h" />
     <ClInclude Include="src\Utils.h" />
   </ItemGroup>
   <ItemGroup>

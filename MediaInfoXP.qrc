@@ -9,9 +9,11 @@
     <file>res/ico_folder.png</file>
     <file>res/ico_info.png</file>
     <file>res/ico_link.png</file>
+    <file>res/ico_options.png</file>
     <file>res/ico_paste.png</file>
     <file>res/ico_qt.png</file>
     <file>res/ico_quit.png</file>
+    <file>res/ico_shellext.png</file>
     <file>res/loading.png</file>
     <file>res/logo.png</file>
     <file>res/MediaInfo.i386.exe</file>

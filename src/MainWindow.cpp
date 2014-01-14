@@ -46,6 +46,7 @@
 //Internal
 #include "Config.h"
 #include "Utils.h"
+#include "ShellExtension.h"
 
 //Macros
 #define SET_FONT_BOLD(WIDGET,BOLD) { QFont _font = WIDGET->font(); _font.setBold(BOLD); WIDGET->setFont(_font); }
@@ -105,6 +106,7 @@ CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
 	connect(ui->actionLink_MediaInfo, SIGNAL(triggered()), this, SLOT(linkTriggered()));
 	connect(ui->actionLink_Discuss, SIGNAL(triggered()), this, SLOT(linkTriggered()));
 	connect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(showAboutScreen()));
+	connect(ui->actionShellExtension, SIGNAL(toggled(bool)), this, SLOT(updateShellExtension(bool)));
 	ui->versionLabel->installEventFilter(this);
 
 	//Context menu
@@ -192,6 +194,8 @@ void CMainWindow::showEvent(QShowEvent *event)
 		{
 			QTimer::singleShot(0, this, SLOT(analyzeFiles()));
 		}
+
+		QTimer::singleShot(1250, this, SLOT(initShellExtension()));
 		m_firstShow = false;
 	}
 }
@@ -325,6 +329,7 @@ void CMainWindow::analyzeFiles(void)
 	ui->actionCopyToClipboard->setEnabled(false);
 	ui->actionSave->setEnabled(false);
 	ui->actionOpen->setEnabled(false);
+	ui->menuPreferences->setEnabled(false);
 
 	//Show banner
 	m_floatingLabel->show();
@@ -356,14 +361,20 @@ void CMainWindow::analyzeNextFile(void)
 		ui->actionOpen->setEnabled(true);
 		ui->analyzeButton->setEnabled(true);
 		ui->exitButton->setEnabled(true);
+		ui->menuPreferences->setEnabled(true);
 		return;
 	}
 
 	const QString filePath = m_pendingFiles.takeFirst();
 
+	//Generate the command line
+	QStringList commandLine;
+	if(ui->actionVerboseOutput->isChecked()) commandLine << "--Full";
+	commandLine << QDir::toNativeSeparators(filePath);
+
 	//Start analyziation
 	qDebug("Analyzing media file:\n%s\n", filePath.toUtf8().constData());
-	m_process->start(mediaInfoPath, QStringList() << QDir::toNativeSeparators(filePath));
+	m_process->start(mediaInfoPath, commandLine);
 
 	//Wait for process to start
 	if(!m_process->waitForStarted())
@@ -375,6 +386,7 @@ void CMainWindow::analyzeNextFile(void)
 		ui->actionOpen->setEnabled(true);
 		ui->analyzeButton->setEnabled(true);
 		ui->exitButton->setEnabled(true);
+		ui->menuPreferences->setEnabled(true);
 		return;
 	}
 
@@ -538,6 +550,27 @@ void CMainWindow::processFinished(void)
 	ui->actionOpen->setEnabled(true);
 	ui->analyzeButton->setEnabled(true);
 	ui->exitButton->setEnabled(true);
+	ui->menuPreferences->setEnabled(true);
+}
+
+void CMainWindow::initShellExtension(void)
+{
+	const bool isEnabled = ShellExtension::getEnabled();
+	
+	if(isEnabled)
+	{
+		ShellExtension::setEnabled(true);
+	}
+
+	ui->actionShellExtension->blockSignals(true);
+	ui->actionShellExtension->setChecked(isEnabled);
+	ui->actionShellExtension->setEnabled(true);
+	ui->actionShellExtension->blockSignals(false);
+}
+
+void CMainWindow::updateShellExtension(bool checked)
+{
+	ShellExtension::setEnabled(checked);
 }
 
 void CMainWindow::linkTriggered(void)

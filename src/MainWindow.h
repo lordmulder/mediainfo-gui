@@ -54,6 +54,8 @@ private slots:
 	void linkTriggered(void);
 	void showAboutScreen(void);
 	void updateSize(void);
+	void initShellExtension(void);
+	void updateShellExtension(bool checked);
 
 protected:
 	virtual void showEvent(QShowEvent *event);

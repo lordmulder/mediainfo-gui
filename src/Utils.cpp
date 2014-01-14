@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <Objbase.h>
 #include <Psapi.h>
+#include <Shlobj.h>
 
 //StdLib
 #include <cstdio>
@@ -119,8 +120,8 @@ static QString mixp_tryLockFolder(const QString &folderPath, QFile **lockfile)
  */
 static const QString &mixp_known_folder(mixp_known_folder_t folder_id)
 {
-	static const int CSIDL_FLAG_CREATE = 0x8000;
-	typedef enum { KF_FLAG_CREATE = 0x00008000 } kf_flags_t;
+	//static const int CSIDL_FLAG_CREATE = 0x8000;
+	//typedef enum { KF_FLAG_CREATE = 0x00008000 } kf_flags_t;
 	
 	struct
 	{
@@ -475,6 +476,88 @@ bool mixp_beep(int beepType)
 		case mixp_beep_error:   return (MessageBeep(MB_ICONHAND) != FALSE);        break;
 		default: return false;
 	}
+}
+
+/*
+ * Registry root key
+ */
+static HKEY mixp_reg_root(int rootKey)
+{
+	switch(rootKey)
+	{
+		case mixp_root_classes: return HKEY_CLASSES_ROOT;  break;
+		case mixp_root_user:    return HKEY_CURRENT_USER;  break;
+		case mixp_root_machine: return HKEY_LOCAL_MACHINE; break;
+		default: throw "Unknown root reg value was specified!";
+	}
+}
+
+/*
+ * Write registry value
+ */
+bool mixp_reg_value_write(int rootKey, const QString &keyName, const QString &valueName, const quint32 value)
+{
+	bool success = false; HKEY hKey = NULL;
+	if(RegCreateKeyEx(mixp_reg_root(rootKey), QWCHAR(keyName), 0, NULL, 0, KEY_WRITE, NULL, &hKey, NULL) == ERROR_SUCCESS)
+	{
+		if(RegSetValueEx(hKey, valueName.isEmpty() ? NULL : QWCHAR(valueName), 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value), sizeof(quint32)) == ERROR_SUCCESS)
+		{
+			success = true;
+		}
+		CloseHandle(hKey);
+	}
+	return success;
+}
+
+/*
+ * Write registry value
+ */
+bool mixp_reg_value_write(int rootKey, const QString &keyName, const QString &valueName, const QString &value)
+{
+	bool success = false; HKEY hKey = NULL;
+	if(RegCreateKeyEx(mixp_reg_root(rootKey), QWCHAR(keyName), 0, NULL, 0, KEY_WRITE, NULL, &hKey, NULL) == ERROR_SUCCESS)
+	{
+		if(RegSetValueEx(hKey, valueName.isEmpty() ? NULL : QWCHAR(valueName), 0, REG_SZ, reinterpret_cast<const BYTE*>(value.utf16()), (value.length() + 1) * sizeof(wchar_t)) == ERROR_SUCCESS)
+		{
+			success = true;
+		}
+		CloseHandle(hKey);
+	}
+	return success;
+}
+
+/*
+ * Read registry value
+ */
+bool mixp_reg_value_read(int rootKey, const QString &keyName, const QString &valueName, quint32 &value)
+{
+	bool success = false; HKEY hKey = NULL;
+	if(RegOpenKeyEx(mixp_reg_root(rootKey), QWCHAR(keyName), 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+	{
+		DWORD size = sizeof(quint32), type = -1;
+		if(RegQueryValueEx(hKey, valueName.isEmpty() ? NULL : QWCHAR(valueName), 0, &type, reinterpret_cast<BYTE*>(&value), &size) == ERROR_SUCCESS)
+		{
+			success = (type == REG_DWORD);
+		}
+		CloseHandle(hKey);
+	}
+	return success;
+}
+
+/*
+ * Delete registry key
+ */
+bool mixp_reg_key_delete(int rootKey, const QString &keyName)
+{
+	return (RegDeleteTree(mixp_reg_root(rootKey), QWCHAR(keyName)) == ERROR_SUCCESS);
+}
+
+/*
+ * Shell notification
+ */
+void mixp_shell_change_notification(void)
+{
+	SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
 }
 
 /*
