@@ -125,6 +125,7 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\IPC.cpp" />
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\MainWindow.cpp" />
     <ClCompile Include="src\ShellExtension.cpp" />
@@ -144,6 +145,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Config.h" />
+    <ClInclude Include="src\IPC.h" />
     <ClInclude Include="src\ShellExtension.h" />
     <ClInclude Include="src\Utils.h" />
   </ItemGroup>

@@ -1,0 +1,50 @@
+///////////////////////////////////////////////////////////////////////////////
+// MediaInfoXP
+// Copyright (C) 2004-2014 LoRd_MuldeR <MuldeR2@GMX.de>
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
+// http://www.gnu.org/licenses/gpl-2.0.txt
+///////////////////////////////////////////////////////////////////////////////
+
+#pragma once
+
+#include <QObject>
+
+class QSharedMemory;
+class QSystemSemaphore;
+
+class IPC : public QObject
+{
+public:
+	IPC(void);
+	~IPC(void);
+
+	int init(void);
+
+	//async support
+	bool sendAsync(const QString &str, const int timeout = 5000);
+	
+	//blocking operations
+	bool pushStr(const QString &str);
+	bool popStr(QString &str);
+
+protected:
+	int m_initialized;
+
+	QSharedMemory *m_sharedMemory;
+	QSystemSemaphore *m_semaphoreRd;
+	QSystemSemaphore *m_semaphoreWr;
+};

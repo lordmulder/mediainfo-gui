@@ -47,6 +47,7 @@
 
 #include "Config.h"
 #include "MainWindow.h"
+#include "IPC.h"
 #include "Utils.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -101,6 +102,21 @@ int mixp_main(int argc, char* argv[])
 	qDebug("Copyright (c) 2004-%s LoRd_MuldeR <mulder2@gmx.de>. Some rights reserved.", &mixp_buildDate[7]);
 	qDebug("Built with Qt v%s, running with Qt v%s.\n", QT_VERSION_STR, qVersion());
 
+	//Initialize IPC
+	IPC *ipc = new IPC();
+	if(ipc->init() == 0)
+	{
+		ipc->sendAsync("Test Hello World 123!");
+		return 0;
+	}
+
+	QString test;
+	qDebug("Awaiting data from other instance...");
+	if(ipc->popStr(test))
+	{
+		qDebug("Got the data: %s\n", test.toUtf8().constData());
+	}
+
 	QFile *lockFile = NULL;
 
 	//Get temp folder
@@ -108,6 +124,7 @@ int mixp_main(int argc, char* argv[])
 	if(tempFolder.isEmpty())
 	{
 		qFatal("Failed to determine TEMP folder!");
+		MIXP_DELETE_OBJ(ipc);
 		return 1;
 	}
 	
@@ -131,6 +148,7 @@ int mixp_main(int argc, char* argv[])
 	if(lockFile) lockFile->remove();
 	MIXP_DELETE_OBJ(lockFile);
 	mixp_clean_folder(tempFolder);
+	MIXP_DELETE_OBJ(ipc);
 
 	return exit_code;
 }
