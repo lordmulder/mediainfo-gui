@@ -102,24 +102,45 @@ int mixp_main(int argc, char* argv[])
 	qDebug("Copyright (c) 2004-%s LoRd_MuldeR <mulder2@gmx.de>. Some rights reserved.", &mixp_buildDate[7]);
 	qDebug("Built with Qt v%s, running with Qt v%s.\n", QT_VERSION_STR, qVersion());
 
-	//Initialize IPC
+	//Create application
+	QApplication *application = new QApplication(argc, argv);
+
+	//Create IPC
 	IPC *ipc = new IPC();
-	if(ipc->init() == 0)
+	
+	//Is this the *first* instance?
+	if(ipc->initialize() == 0)
 	{
-		ipc->sendAsync("Test Hello World 123!");
-		return 0;
+		//We are *not* the first instance -> pass all file names to the running instance
+		const QStringList arguments = qApp->arguments();
+		bool bHaveFile = false;
+		for(QStringList::ConstIterator iter = arguments.constBegin(); iter != arguments.constEnd(); iter++)
+		{
+			if(QString::compare(*iter, "--open", Qt::CaseInsensitive) == 0)
+			{
+				if(++iter != arguments.constEnd())
+				{
+					if(ipc->sendAsync(*iter))
+					{
+						bHaveFile = true;
+						continue;
+					}
+				}
+				break;
+			}
+		}
+		//If no file was sent, we will at least try to bring the other instance to front
+		if(!bHaveFile)
+		{
+			ipc->sendAsync("?");
+		}
+		MIXP_DELETE_OBJ(ipc);
+		MIXP_DELETE_OBJ(application);
+		return 42;
 	}
-
-	QString test;
-	qDebug("Awaiting data from other instance...");
-	if(ipc->popStr(test))
-	{
-		qDebug("Got the data: %s\n", test.toUtf8().constData());
-	}
-
-	QFile *lockFile = NULL;
 
 	//Get temp folder
+	QFile *lockFile = NULL;
 	const QString tempFolder = mixp_getTempFolder(&lockFile);
 	if(tempFolder.isEmpty())
 	{
@@ -130,18 +151,17 @@ int mixp_main(int argc, char* argv[])
 	
 	qDebug("TEMP folder is:\n%s\n", QDir::toNativeSeparators(tempFolder).toUtf8().constData());
 
-	//Create application
-	QApplication *application = new QApplication(argc, argv);
-	application->setWindowIcon(QIcon(":/QtTestApp.ico"));
-
 	//Create main window
-	CMainWindow *mainWindow = new CMainWindow(tempFolder);
+	CMainWindow *mainWindow = new CMainWindow(tempFolder, ipc);
 	mainWindow->show();
 
 	//Run application
 	const int exit_code = application->exec();
 	qDebug("\nTime to say goodbye... (%d)\n", exit_code);
 	
+	//Stop IPC
+	ipc->stopListening();
+
 	//Clean up
 	MIXP_DELETE_OBJ(mainWindow);
 	MIXP_DELETE_OBJ(application);

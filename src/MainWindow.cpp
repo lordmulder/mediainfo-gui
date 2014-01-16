@@ -39,18 +39,16 @@
 //CRT
 #include <ctime>
 
-//Win32
-//#define WIN32_LEAN_AND_MEAN
-//#include <Windows.h>
-
 //Internal
 #include "Config.h"
 #include "Utils.h"
 #include "ShellExtension.h"
+#include "IPC.h"
 
 //Macros
 #define SET_FONT_BOLD(WIDGET,BOLD) { QFont _font = WIDGET->font(); _font.setBold(BOLD); WIDGET->setFont(_font); }
 #define SET_TEXT_COLOR(WIDGET,COLOR) { QPalette _palette = WIDGET->palette(); _palette.setColor(QPalette::WindowText, (COLOR)); _palette.setColor(QPalette::Text, (COLOR)); WIDGET->setPalette(_palette); }
+#define APPLICATION_IS_IDLE (m_status == APP_STATUS_IDLE)
 
 //Text
 const char *STATUS_BLNK = ">> You can drop any type of media files here <<";
@@ -71,16 +69,20 @@ static QList<QPair<const QString, const QString>> HTML_ESCAPE(void)
 	return htmlEscape;
 }
 
+//Const
+static const int FILE_RECEIVE_DELAY = 1750;
+
 ////////////////////////////////////////////////////////////
 // Constructor
 ////////////////////////////////////////////////////////////
 
-CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
+CMainWindow::CMainWindow(const QString &tempFolder, IPC *const ipc, QWidget *parent)
 :
 	QMainWindow(parent),
 	m_tempFolder(tempFolder),
-	m_firstShow(true),
+	m_ipc(ipc),
 	m_htmlEscape(HTML_ESCAPE()),
+	m_status(APP_STATUS_STARTING),
 	ui(new Ui::MainWindow)
 {
 	//Init UI
@@ -107,6 +109,7 @@ CMainWindow::CMainWindow(const QString &tempFolder, QWidget *parent)
 	connect(ui->actionLink_Discuss, SIGNAL(triggered()), this, SLOT(linkTriggered()));
 	connect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(showAboutScreen()));
 	connect(ui->actionShellExtension, SIGNAL(toggled(bool)), this, SLOT(updateShellExtension(bool)));
+	connect(m_ipc, SIGNAL(receivedStr(QString)), this, SLOT(fileReceived(QString)));
 	ui->versionLabel->installEventFilter(this);
 
 	//Context menu
@@ -168,10 +171,7 @@ void CMainWindow::showEvent(QShowEvent *event)
 	resizeEvent(NULL);
 	QTimer::singleShot(0, this, SLOT(updateSize()));
 
-	//Enable drag & drop support
-	setAcceptDrops(true);
-
-	if(m_firstShow)
+	if(m_status == APP_STATUS_STARTING)
 	{
 		const QStringList arguments = qApp->arguments();
 		for(QStringList::ConstIterator iter = arguments.constBegin(); iter != arguments.constEnd(); iter++)
@@ -192,19 +192,28 @@ void CMainWindow::showEvent(QShowEvent *event)
 		}
 		if(!m_pendingFiles.empty())
 		{
-			QTimer::singleShot(0, this, SLOT(analyzeFiles()));
+			m_status = APP_STATUS_AWAITING;
+			QTimer::singleShot(FILE_RECEIVE_DELAY, this, SLOT(analyzeFiles()));
 		}
 
-		QTimer::singleShot(1250, this, SLOT(initShellExtension()));
-		m_firstShow = false;
+		QTimer::singleShot(125, m_ipc, SLOT(startListening()));
+		QTimer::singleShot(250, this, SLOT(initShellExtension()));
+		
+		if(m_status == APP_STATUS_STARTING)
+		{
+			m_status = APP_STATUS_IDLE;
+		}
 	}
+
+	//Enable drag & drop support
+	setAcceptDrops(true);
 }
 
 void CMainWindow::closeEvent(QCloseEvent *event)
 {
 	if(m_process)
 	{
-		if(m_process->state() != QProcess::NotRunning)
+		if(!APPLICATION_IS_IDLE)
 		{
 			event->ignore();
 		}
@@ -238,9 +247,9 @@ void CMainWindow::dragEnterEvent(QDragEnterEvent *event)
 
 void CMainWindow::dropEvent(QDropEvent *event)
 {
-	if(m_process && (m_process->state() != QProcess::NotRunning))
+	if(!APPLICATION_IS_IDLE)
 	{
-		qWarning("Process is still running!\n");
+		qWarning("Cannot process files at this time!\n");
 		return;
 	}
 
@@ -259,6 +268,7 @@ void CMainWindow::dropEvent(QDropEvent *event)
 
 	if(!m_pendingFiles.isEmpty())
 	{
+		m_status = APP_STATUS_WORKING;
 		QTimer::singleShot(0, this, SLOT(analyzeFiles()));
 	}
 }
@@ -318,6 +328,8 @@ void CMainWindow::analyzeFiles(void)
 		return;
 	}
 
+	m_status = APP_STATUS_WORKING;
+
 	//Clear data
 	ui->textBrowser->clear();
 	m_outputLines.clear();
@@ -335,10 +347,7 @@ void CMainWindow::analyzeFiles(void)
 	m_floatingLabel->show();
 	m_floatingLabel->setText(QString::fromLatin1(STATUS_WORK));
 	m_floatingLabel->setCursor(Qt::WaitCursor);
-	
-	//Trigger GUI update
-	QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-
+		
 	//Give it a go!
 	QTimer::singleShot(0, this, SLOT(analyzeNextFile()));
 }
@@ -348,6 +357,13 @@ void CMainWindow::analyzeNextFile(void)
 	if(m_pendingFiles.isEmpty())
 	{
 		qWarning("Oups, no pending files!");
+		return;
+	}
+
+	//Still running?
+	if(m_process->state() != QProcess::NotRunning)
+	{
+		qWarning("Process is still running!\n");
 		return;
 	}
 
@@ -362,6 +378,7 @@ void CMainWindow::analyzeNextFile(void)
 		ui->analyzeButton->setEnabled(true);
 		ui->exitButton->setEnabled(true);
 		ui->menuPreferences->setEnabled(true);
+		m_status = APP_STATUS_IDLE;
 		return;
 	}
 
@@ -387,6 +404,7 @@ void CMainWindow::analyzeNextFile(void)
 		ui->analyzeButton->setEnabled(true);
 		ui->exitButton->setEnabled(true);
 		ui->menuPreferences->setEnabled(true);
+		m_status = APP_STATUS_IDLE;
 		return;
 	}
 
@@ -395,9 +413,9 @@ void CMainWindow::analyzeNextFile(void)
 
 void CMainWindow::analyzeButtonClicked(void)
 {
-	if(m_process && (m_process->state() != QProcess::NotRunning))
+	if(!APPLICATION_IS_IDLE)
 	{
-		qWarning("Process is still running!\n");
+		qWarning("Cannot process files at this time!\n");
 		return;
 	}
 
@@ -406,18 +424,19 @@ void CMainWindow::analyzeButtonClicked(void)
 	{
 		m_pendingFiles.clear();
 		m_pendingFiles << selectedFiles;
+		m_status = APP_STATUS_WORKING;
 		analyzeFiles();
 	}
 }
 
 void CMainWindow::saveButtonClicked(void)
 {
-	if(m_process && (m_process->state() != QProcess::NotRunning))
+	if(!APPLICATION_IS_IDLE)
 	{
-		qWarning("Process is still running!\n");
+		qWarning("Cannot process files at this time!\n");
 		return;
 	}
-		
+
 	const QString selectedFile = QFileDialog::getSaveFileName(this, tr("Select file to save..."), QString(), tr("Plain Text (*.txt)"));
 	if(!selectedFile.isEmpty())
 	{
@@ -437,9 +456,9 @@ void CMainWindow::saveButtonClicked(void)
 
 void CMainWindow::copyToClipboardButtonClicked(void)
 {
-	if(m_process && (m_process->state() != QProcess::NotRunning))
+	if(!APPLICATION_IS_IDLE)
 	{
-		qWarning("Process is still running!\n");
+		qWarning("Cannot process files at this time!\n");
 		return;
 	}
 
@@ -452,9 +471,9 @@ void CMainWindow::copyToClipboardButtonClicked(void)
 
 void CMainWindow::clearButtonClicked(void)
 {
-	if(m_process && (m_process->state() != QProcess::NotRunning))
+	if(!APPLICATION_IS_IDLE)
 	{
-		qWarning("Process is still running!\n");
+		qWarning("Cannot process files at this time!\n");
 		return;
 	}
 
@@ -551,6 +570,8 @@ void CMainWindow::processFinished(void)
 	ui->analyzeButton->setEnabled(true);
 	ui->exitButton->setEnabled(true);
 	ui->menuPreferences->setEnabled(true);
+
+	m_status = APP_STATUS_IDLE;
 }
 
 void CMainWindow::initShellExtension(void)
@@ -584,9 +605,9 @@ void CMainWindow::linkTriggered(void)
 
 void CMainWindow::showAboutScreen(void)
 {
-	if(m_process && (m_process->state() != QProcess::NotRunning))
+	if(!APPLICATION_IS_IDLE)
 	{
-		qWarning("Process is still running!\n");
+		qWarning("Cannot process files at this time!\n");
 		return;
 	}
 
@@ -642,6 +663,38 @@ void CMainWindow::updateSize(void)
 	if(const QWidget *const viewPort = ui->textBrowser->viewport())
 	{
 		m_floatingLabel->setGeometry(viewPort->x(), viewPort->y(), viewPort->width(), viewPort->height());
+	}
+}
+
+void CMainWindow::fileReceived(const QString &str)
+{
+	mixp_bring_to_front(this);
+
+	if(str.compare("?") != 0)
+	{
+		qDebug("Received file: %s", str.toUtf8().constData());
+	
+		if((m_status != APP_STATUS_IDLE) && (m_status != APP_STATUS_AWAITING))
+		{
+			qWarning("Cannot process files at this time!\n");
+			return;
+		}
+
+		const QString absPath = QFileInfo(QDir::fromNativeSeparators(str)).absoluteFilePath();
+		QFileInfo fileInfo(absPath);
+		if(fileInfo.exists() && fileInfo.isFile())
+		{
+			m_pendingFiles << fileInfo.canonicalFilePath();
+			if(m_status == APP_STATUS_IDLE)
+			{
+				m_status = APP_STATUS_AWAITING;
+				QTimer::singleShot(FILE_RECEIVE_DELAY, this, SLOT(analyzeFiles()));
+			}
+		}
+	}
+	else
+	{
+		qDebug("Received ping from another instance!");
 	}
 }
 

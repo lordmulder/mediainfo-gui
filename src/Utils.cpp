@@ -479,6 +479,26 @@ bool mixp_beep(int beepType)
 }
 
 /*
+ * Bring the specifed window to the front
+ */
+bool mixp_bring_to_front(const QWidget *window)
+{
+	bool ret = false;
+	
+	if(window)
+	{
+		for(int i = 0; (i < 5) && (!ret); i++)
+		{
+			ret = (SetForegroundWindow(window->winId()) != FALSE);
+			SwitchToThisWindow(window->winId(), TRUE);
+		}
+		LockSetForegroundWindow(LSFW_LOCK);
+	}
+
+	return ret;
+}
+
+/*
  * Registry root key
  */
 static HKEY mixp_reg_root(int rootKey)

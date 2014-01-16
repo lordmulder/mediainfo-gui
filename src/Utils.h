@@ -60,6 +60,7 @@ QDate mixp_get_current_date(void);
 mixp_icon_t *mixp_set_window_icon(QWidget *window, const QIcon &icon, const bool bIsBigIcon);
 void mixp_free_window_icon(mixp_icon_t *icon);
 bool mixp_beep(int beepType);
+bool mixp_bring_to_front(const QWidget *window);
 void mixp_shell_change_notification(void);
 
 //Regsitry

@@ -130,6 +130,7 @@
     <ClCompile Include="src\MainWindow.cpp" />
     <ClCompile Include="src\ShellExtension.cpp" />
     <ClCompile Include="src\Utils.cpp" />
+    <ClCompile Include="tmp\Common\moc\MOC_IPC.cpp" />
     <ClCompile Include="tmp\Common\moc\MOC_MainWindow.cpp" />
     <ClCompile Include="tmp\Common\rcc\RCC_MediaInfoXP.cpp" />
   </ItemGroup>
@@ -145,7 +146,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Config.h" />
-    <ClInclude Include="src\IPC.h" />
+    <CustomBuild Include="src\IPC.h">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(QTDIR)\bin\moc.exe" -o "$(SolutionDir)\tmp\Common\moc\MOC_%(Filename).cpp" "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(QTDIR)\bin\moc.exe" -o "$(SolutionDir)\tmp\Common\moc\MOC_%(Filename).cpp" "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">MOC "$(SolutionDir)\tmp\Common\moc\MOC_%(Filename).cpp"</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">MOC "$(SolutionDir)\tmp\Common\moc\MOC_%(Filename).cpp"</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)\tmp\Common\moc\MOC_%(Filename).cpp;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)\tmp\Common\moc\MOC_%(Filename).cpp;%(Outputs)</Outputs>
+    </CustomBuild>
     <ClInclude Include="src\ShellExtension.h" />
     <ClInclude Include="src\Utils.h" />
   </ItemGroup>

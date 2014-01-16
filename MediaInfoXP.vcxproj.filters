@@ -31,6 +31,9 @@
     <CustomBuild Include="src\MainWindow.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
+    <CustomBuild Include="src\IPC.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Main.cpp">
@@ -54,6 +57,9 @@
     <ClCompile Include="src\IPC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="tmp\Common\moc\MOC_IPC.cpp">
+      <Filter>Source Files\Generated</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Config.h">
@@ -63,9 +69,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ShellExtension.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\IPC.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

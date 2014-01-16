@@ -21,30 +21,80 @@
 
 #pragma once
 
-#include <QObject>
+#include <QThread>
 
 class QSharedMemory;
 class QSystemSemaphore;
+class IPCSendThread;
+class IPCReceiveThread;
 
 class IPC : public QObject
 {
+	Q_OBJECT
+	friend class IPCReceiveThread;
+	friend class IPCSendThread;
+
 public:
 	IPC(void);
 	~IPC(void);
 
-	int init(void);
-
-	//async support
+	int initialize(void);
 	bool sendAsync(const QString &str, const int timeout = 5000);
-	
-	//blocking operations
-	bool pushStr(const QString &str);
-	bool popStr(QString &str);
+
+public slots:
+	void startListening(void);
+	void stopListening(void);
+
+signals:
+	void receivedStr(const QString &str);
 
 protected:
+	bool popStr(QString &str);
+	bool pushStr(const QString &str);
+
 	int m_initialized;
 
 	QSharedMemory *m_sharedMemory;
 	QSystemSemaphore *m_semaphoreRd;
 	QSystemSemaphore *m_semaphoreWr;
+	IPCReceiveThread *m_recvThread;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+
+class IPCSendThread : public QThread
+{
+	Q_OBJECT
+	friend class IPC;
+
+protected:
+	IPCSendThread(IPC *ipc, const QString &str);
+	inline bool result(void) { return m_result; }
+
+	virtual void run(void);
+
+private:
+	volatile bool m_result;
+	IPC *const m_ipc;
+	const QString m_str;
+};
+
+class IPCReceiveThread : public QThread
+{
+	Q_OBJECT
+	friend class IPC;
+
+protected:
+	IPCReceiveThread(IPC *ipc);
+	inline void stop(void) { m_stopped = true; }
+
+	virtual void run(void);
+
+signals:
+	void receivedStr(const QString &str);
+
+private:
+	void receiveLoop(void);
+	volatile bool m_stopped;
+	IPC *const m_ipc;
 };

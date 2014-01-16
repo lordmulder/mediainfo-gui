@@ -32,6 +32,7 @@ class QProcess;
 class QLabel;
 class QFile;
 class mixp_icon_t;
+class IPC;
 
 //MainWindow class
 class CMainWindow: public QMainWindow
@@ -39,7 +40,7 @@ class CMainWindow: public QMainWindow
 	Q_OBJECT
 
 public:
-	CMainWindow(const QString &tempFolder, QWidget *parent = 0);
+	CMainWindow(const QString &tempFolder, IPC *const ipc, QWidget *parent = 0);
 	~CMainWindow(void);
 
 private slots:
@@ -56,6 +57,7 @@ private slots:
 	void updateSize(void);
 	void initShellExtension(void);
 	void updateShellExtension(bool checked);
+	void fileReceived(const QString &path);
 
 protected:
 	virtual void showEvent(QShowEvent *event);
@@ -67,16 +69,27 @@ protected:
 	virtual void keyPressEvent(QKeyEvent *e);
 
 private:
+	enum
+	{
+		APP_STATUS_STARTING = 0,
+		APP_STATUS_IDLE = 1,
+		APP_STATUS_AWAITING = 2,
+		APP_STATUS_WORKING = 3
+	}
+	status_t;
+	
 	Ui::MainWindow *ui; //for Qt UIC
 	
+	int m_status;
 	const QString &m_tempFolder;
-	bool m_firstShow;
+
 	QFile *m_mediaInfoHandle;
 	QProcess *m_process;
 	QLabel *m_floatingLabel;
 	QStringList m_pendingFiles;
 	QStringList m_outputLines;
 	mixp_icon_t *m_icon;
+	IPC *const m_ipc;
 	
 	const QList<QPair<const QString, const QString>> m_htmlEscape;
 
