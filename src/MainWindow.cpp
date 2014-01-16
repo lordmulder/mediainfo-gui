@@ -213,6 +213,7 @@ void CMainWindow::closeEvent(QCloseEvent *event)
 {
 	if(!APPLICATION_IS_IDLE)
 	{
+		qWarning("Cannot exit program at this time!");
 		event->ignore();
 	}
 }
@@ -364,6 +365,8 @@ void CMainWindow::analyzeNextFile(void)
 		return;
 	}
 
+	m_status = APP_STATUS_WORKING;
+
 	//Lookup MediaInfo path
 	const QString mediaInfoPath = getMediaInfoPath();
 	if(mediaInfoPath.isEmpty())
@@ -412,11 +415,14 @@ void CMainWindow::analyzeButtonClicked(void)
 {
 	if(!APPLICATION_IS_IDLE)
 	{
-		qWarning("Cannot process files at this time!\n");
+		qWarning("Cannot open files at this time!\n");
 		return;
 	}
 
+	m_status = APP_STATUS_BLOCKED;
 	const QStringList selectedFiles = QFileDialog::getOpenFileNames(this, tr("Select file to analyze..."), QString(), tr("All supported media files (*.*)"));
+	m_status = APP_STATUS_IDLE;
+
 	if(!selectedFiles.isEmpty())
 	{
 		m_pendingFiles.clear();
@@ -434,7 +440,10 @@ void CMainWindow::saveButtonClicked(void)
 		return;
 	}
 
+	m_status = APP_STATUS_BLOCKED;
 	const QString selectedFile = QFileDialog::getSaveFileName(this, tr("Select file to save..."), QString(), tr("Plain Text (*.txt)"));
+	m_status = APP_STATUS_IDLE;
+
 	if(!selectedFile.isEmpty())
 	{
 		QFile file(selectedFile);
@@ -604,7 +613,7 @@ void CMainWindow::showAboutScreen(void)
 {
 	if(!APPLICATION_IS_IDLE)
 	{
-		qWarning("Cannot process files at this time!\n");
+		qWarning("Cannot show about box at this time!\n");
 		return;
 	}
 
@@ -643,6 +652,8 @@ void CMainWindow::showAboutScreen(void)
 		aboutBox.setEscapeButton(btn);
 	}
 
+	m_status = APP_STATUS_BLOCKED;
+
 	forever
 	{
 		const int ret = aboutBox.exec();
@@ -653,6 +664,8 @@ void CMainWindow::showAboutScreen(void)
 		}
 		break;
 	}
+
+	m_status = APP_STATUS_IDLE;
 }
 
 void CMainWindow::updateSize(void)
