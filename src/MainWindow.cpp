@@ -211,12 +211,9 @@ void CMainWindow::showEvent(QShowEvent *event)
 
 void CMainWindow::closeEvent(QCloseEvent *event)
 {
-	if(m_process)
+	if(!APPLICATION_IS_IDLE)
 	{
-		if(!APPLICATION_IS_IDLE)
-		{
-			event->ignore();
-		}
+		event->ignore();
 	}
 }
 
