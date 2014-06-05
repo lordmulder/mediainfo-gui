@@ -57,6 +57,7 @@ private slots:
 	void updateSize(void);
 	void initShellExtension(void);
 	void updateShellExtension(bool checked);
+	void updateLineWrapping(bool checked);
 	void fileReceived(const QString &path);
 
 protected:

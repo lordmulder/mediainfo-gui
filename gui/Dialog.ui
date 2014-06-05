@@ -239,6 +239,7 @@
        <normaloff>:/res/ico_options.png</normaloff>:/res/ico_options.png</iconset>
      </property>
      <addaction name="actionShellExtension"/>
+     <addaction name="actionLineWrapping"/>
      <addaction name="actionVerboseOutput"/>
     </widget>
     <addaction name="actionOpen"/>
@@ -370,7 +371,15 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Enable Verbose Output</string>
+    <string>Enable Verbose/Debug Output</string>
+   </property>
+  </action>
+  <action name="actionLineWrapping">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Enable Line Wrapping</string>
    </property>
   </action>
  </widget>

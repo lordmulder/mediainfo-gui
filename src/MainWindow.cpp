@@ -99,17 +99,18 @@ CMainWindow::CMainWindow(const QString &tempFolder, IPC *const ipc, QWidget *par
 	ui->actionLink_Discuss->setData(QVariant(QString::fromLatin1(LINK_DISCUSS)));
 
 	//Setup connections
-	connect(ui->analyzeButton, SIGNAL(clicked()), this, SLOT(analyzeButtonClicked()));
-	connect(ui->actionOpen, SIGNAL(triggered()), this, SLOT(analyzeButtonClicked()));
-	connect(ui->actionSave, SIGNAL(triggered()), this, SLOT(saveButtonClicked()));
-	connect(ui->actionCopyToClipboard, SIGNAL(triggered()), this, SLOT(copyToClipboardButtonClicked()));
-	connect(ui->actionClear, SIGNAL(triggered()), this, SLOT(clearButtonClicked()));
-	connect(ui->actionLink_MuldeR, SIGNAL(triggered()), this, SLOT(linkTriggered()));
-	connect(ui->actionLink_MediaInfo, SIGNAL(triggered()), this, SLOT(linkTriggered()));
-	connect(ui->actionLink_Discuss, SIGNAL(triggered()), this, SLOT(linkTriggered()));
-	connect(ui->actionAbout, SIGNAL(triggered()), this, SLOT(showAboutScreen()));
-	connect(ui->actionShellExtension, SIGNAL(toggled(bool)), this, SLOT(updateShellExtension(bool)));
-	connect(m_ipc, SIGNAL(receivedStr(QString)), this, SLOT(fileReceived(QString)));
+	connect(ui->analyzeButton,         SIGNAL(clicked()),            this, SLOT(analyzeButtonClicked()));
+	connect(ui->actionOpen,            SIGNAL(triggered()),          this, SLOT(analyzeButtonClicked()));
+	connect(ui->actionSave,            SIGNAL(triggered()),          this, SLOT(saveButtonClicked()));
+	connect(ui->actionCopyToClipboard, SIGNAL(triggered()),          this, SLOT(copyToClipboardButtonClicked()));
+	connect(ui->actionClear,           SIGNAL(triggered()),          this, SLOT(clearButtonClicked()));
+	connect(ui->actionLink_MuldeR,     SIGNAL(triggered()),          this, SLOT(linkTriggered()));
+	connect(ui->actionLink_MediaInfo,  SIGNAL(triggered()),          this, SLOT(linkTriggered()));
+	connect(ui->actionLink_Discuss,    SIGNAL(triggered()),          this, SLOT(linkTriggered()));
+	connect(ui->actionAbout,           SIGNAL(triggered()),          this, SLOT(showAboutScreen()));
+	connect(ui->actionShellExtension,  SIGNAL(toggled(bool)),        this, SLOT(updateShellExtension(bool)));
+	connect(ui->actionLineWrapping,    SIGNAL(toggled(bool)),        this, SLOT(updateLineWrapping(bool)));
+	connect(m_ipc,                     SIGNAL(receivedStr(QString)), this, SLOT(fileReceived(QString)));
 	ui->versionLabel->installEventFilter(this);
 
 	//Context menu
@@ -563,7 +564,7 @@ void CMainWindow::processFinished(void)
 	htmlData.replaceInStrings(QRegExp("^([^:<>]+)$"), "<b><font color=\"darkred\">\\1</font></b>");		//Heading lines
 
 	//Update document
-	ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(htmlData.join("<br>")));
+	ui->textBrowser->setHtml(QString("<pre style=\"white-space:pre-wrap\">%1</pre>").arg(htmlData.join("<br>")));
 
 	//Enable actions
 	if(!m_outputLines.empty())
@@ -598,6 +599,11 @@ void CMainWindow::initShellExtension(void)
 void CMainWindow::updateShellExtension(bool checked)
 {
 	ShellExtension::setEnabled(checked);
+}
+
+void CMainWindow::updateLineWrapping(bool checked)
+{
+	ui->textBrowser->setLineWrapMode(checked ? QTextEdit::WidgetWidth : QTextEdit::NoWrap);
 }
 
 void CMainWindow::linkTriggered(void)

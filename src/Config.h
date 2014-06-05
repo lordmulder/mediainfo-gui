@@ -21,7 +21,7 @@
 
 //Version
 static unsigned int mixp_versionMajor = 2;
-static unsigned int mixp_versionMinor = 10;
+static unsigned int mixp_versionMinor = 11;
 
 //MediaInfo Version
 static unsigned int mixp_miVersionMajor = 0;
