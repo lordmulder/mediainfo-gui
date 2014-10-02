@@ -21,12 +21,12 @@
 
 //Version
 static unsigned int mixp_versionMajor = 2;
-static unsigned int mixp_versionMinor = 11;
+static unsigned int mixp_versionMinor = 12;
 
 //MediaInfo Version
 static unsigned int mixp_miVersionMajor = 0;
 static unsigned int mixp_miVersionMinor = 7;
-static unsigned int mixp_miVersionPatch = 69;
+static unsigned int mixp_miVersionPatch = 70;
 
 //Build date
 static const char *mixp_buildDate = __DATE__;
