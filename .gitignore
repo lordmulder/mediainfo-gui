@@ -2,8 +2,7 @@
 /obj/
 /bin/
 /ipch/
-/res/toolset/
-/src/*.h.bak
+/out
 /*.sdf
 /*.suo
 /*.user
