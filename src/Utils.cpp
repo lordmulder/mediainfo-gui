@@ -30,6 +30,7 @@
 #include <Objbase.h>
 #include <Psapi.h>
 #include <Shlobj.h>
+#include <Shlwapi.h>
 
 //StdLib
 #include <cstdio>
@@ -569,7 +570,7 @@ bool mixp_reg_value_read(int rootKey, const QString &keyName, const QString &val
  */
 bool mixp_reg_key_delete(int rootKey, const QString &keyName)
 {
-	return (RegDeleteTree(mixp_reg_root(rootKey), QWCHAR(keyName)) == ERROR_SUCCESS);
+	return (SHDeleteKey( mixp_reg_root(rootKey), QWCHAR(keyName)) == ERROR_SUCCESS);
 }
 
 /*
