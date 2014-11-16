@@ -35,6 +35,7 @@
 #include <QScrollBar>
 #include <QDesktopServices>
 #include <QClipboard>
+#include <QCryptographicHash>
 
 //CRT
 #include <ctime>
@@ -141,7 +142,7 @@ CMainWindow::CMainWindow(const QString &tempFolder, IPC *const ipc, QWidget *par
 
 CMainWindow::~CMainWindow(void)
 {
-	if(m_mediaInfoHandle != NULL)
+	if(m_mediaInfoHandle)
 	{
 		m_mediaInfoHandle->remove();
 		MIXP_DELETE_OBJ(m_mediaInfoHandle);
@@ -373,7 +374,7 @@ void CMainWindow::analyzeNextFile(void)
 	if(mediaInfoPath.isEmpty())
 	{
 		ui->textBrowser->setHtml(QString("<pre>%1</pre>").arg(tr("Oups, failed to extract MediaInfo binary!")));
-		QMessageBox::critical(this, tr("Failure"), tr("Error: Failed to extract MediaInfo binary!"), QMessageBox::Ok);
+		QMessageBox::critical(this, tr("Failure"), tr("Fatal Error: Failed to extract the MediaInfo binary!"), QMessageBox::Ok);
 		m_floatingLabel->hide();
 		ui->actionOpen->setEnabled(true);
 		ui->analyzeButton->setEnabled(true);
@@ -636,7 +637,7 @@ void CMainWindow::showAboutScreen(void)
 	text += QString().sprintf("Note that this program is distributed with ABSOLUTELY NO WARRANTY.<br><br>");
 	text += QString().sprintf("Please check the web-site at <a href=\"%s\">%s</a> for updates !!!<br>", LINK_MULDER, LINK_MULDER);
 	text += QString().sprintf("<hr><br>");
-	text += QString().sprintf("This application is powered by MediaInfo v%u.%u.%02u<br>", mixp_miVersionMajor, mixp_miVersionMinor, mixp_miVersionPatch);
+	text += QString().sprintf("<b>This application is powered by MediaInfo v%u.%u.%02u</b><br>", mixp_miVersionMajor, mixp_miVersionMinor, mixp_miVersionPatch);
 	text += QString().sprintf("Free and OpenSource tool for displaying technical information about media files.<br>");
 	text += QString().sprintf("Copyright (c) 2002-%04d MediaArea.net SARL. All rights reserved.<br><br>", qMax(buildDate.year(),curntDate.year()));
 	text += QString().sprintf("Redistribution and use is permitted according to the (2-Clause) BSD License.<br>");
@@ -718,71 +719,87 @@ void CMainWindow::fileReceived(const QString &str)
 // PRIVATE FUNCTIONS
 ////////////////////////////////////////////////////////////
 
-#define VALIDATE_MEDIAINFO(HANDLE) do \
-{ \
-	if((HANDLE)) \
-	{ \
-		(HANDLE)->seek(0); \
-		QByteArray buffer = (HANDLE)->readAll(); \
-		if((buffer.size() != mediaInfoRes.size()) || (memcmp(buffer.constData(), mediaInfoRes.data(), mediaInfoRes.size()) != 0)) \
-		{ \
-			qWarning("MediaInfo binary failed to validate!"); \
-			(HANDLE)->remove(); \
-			MIXP_DELETE_OBJ((HANDLE)); \
-		} \
-	} \
-} \
-while(0)
+static bool VALIDATE_MEDIAINFO(QFile *const handle)
+{
+	if(!handle->reset())
+	{
+		return false;
+	}
+
+	const QByteArray checksum = QCryptographicHash::hash(handle->readAll(), QCryptographicHash::Sha1);
+	if(qstricmp(checksum.toHex().constData(), mixp_checksum) != 0)
+	{
+		qWarning("MediaInfo binary is corrupted!");
+		qWarning("Expected checksum: %s", mixp_checksum);
+		qWarning("Computed checksum: %s\n", checksum.toHex().constData());
+		return false;
+	}
+
+	qDebug("MediaInfo checksum: %s\n", checksum.toHex().constData());
+	return true;
+}
 
 QString CMainWindow::getMediaInfoPath(void)
 {
-	QResource mediaInfoRes(":/res/MediaInfo.i386.exe");
+	QResource mediaInfoRes(":/res/MediaInfo.i686.exe");
 	if((!mediaInfoRes.isValid()) || (!mediaInfoRes.data()))
 	{
 		qFatal("MediaInfo resource could not be initialized!");
 		return QString();
 	}
 	
-	//Validate file content
-	VALIDATE_MEDIAINFO(m_mediaInfoHandle);
-
-	//Extract MediaInfo
-	if(!m_mediaInfoHandle)
+	//Validate file content, if already extracted
+	if(m_mediaInfoHandle)
 	{
-		qDebug("MediaInfo binary not existing yet, going to extract now...\n");
-		m_mediaInfoHandle = new QFile(QString("%1/MediaInfo_%2.exe").arg(m_tempFolder, QString().sprintf("%04x", qrand() % 0xFFFF)));
-		if(m_mediaInfoHandle->open(QIODevice::ReadWrite | QIODevice::Truncate))
+		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle))
 		{
-			if(m_mediaInfoHandle->write(reinterpret_cast<const char*>(mediaInfoRes.data()), mediaInfoRes.size()) == mediaInfoRes.size())
+			return m_mediaInfoHandle->fileName();
+		}
+		m_mediaInfoHandle->remove();
+		MIXP_DELETE_OBJ(m_mediaInfoHandle);
+	}
+
+	//Extract MediaInfo binary now!
+	qDebug("MediaInfo binary not existing yet, going to extract now...\n");
+	m_mediaInfoHandle = new QFile(QString("%1/MediaInfo_%2.exe").arg(m_tempFolder, QString().sprintf("%04x", qrand() % 0xFFFF)));
+	if(m_mediaInfoHandle->open(QIODevice::ReadWrite | QIODevice::Truncate))
+	{
+		if(m_mediaInfoHandle->write(reinterpret_cast<const char*>(mediaInfoRes.data()), mediaInfoRes.size()) == mediaInfoRes.size())
+		{
+			qDebug("MediaInfo path is:\n%s\n", m_mediaInfoHandle->fileName().toUtf8().constData());
+			m_mediaInfoHandle->close();
+			if(!m_mediaInfoHandle->open(QIODevice::ReadOnly))
 			{
-				qDebug("MediaInfo path is:\n%s\n", m_mediaInfoHandle->fileName().toUtf8().constData());
-				m_mediaInfoHandle->close();
-				if(!m_mediaInfoHandle->open(QIODevice::ReadOnly))
-				{
-					qWarning("Failed to open MediaInfo binary for reading!\n");
-					m_mediaInfoHandle->remove();
-					MIXP_DELETE_OBJ(m_mediaInfoHandle);
-				}
-			}
-			else
-			{
-				qWarning("Failed to write data to MediaInfo binary file!\n");
+				qWarning("Failed to open MediaInfo binary for reading!\n");
 				m_mediaInfoHandle->remove();
 				MIXP_DELETE_OBJ(m_mediaInfoHandle);
 			}
 		}
 		else
 		{
-			qWarning("Failed to open MediaInfo binary for writing!\n");
+			qWarning("Failed to write data to MediaInfo binary file!\n");
+			m_mediaInfoHandle->remove();
 			MIXP_DELETE_OBJ(m_mediaInfoHandle);
 		}
 	}
+	else
+	{
+		qWarning("Failed to open MediaInfo binary for writing!\n");
+		MIXP_DELETE_OBJ(m_mediaInfoHandle);
+	}
 
-	//Validate file content
-	VALIDATE_MEDIAINFO(m_mediaInfoHandle);
+	//Validate file content, after it has been extracted
+	if(m_mediaInfoHandle)
+	{
+		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle))
+		{
+			return m_mediaInfoHandle->fileName();
+		}
+		m_mediaInfoHandle->remove();
+		MIXP_DELETE_OBJ(m_mediaInfoHandle);
+	}
 
-	//Return current MediaInfo path
-	return m_mediaInfoHandle ? m_mediaInfoHandle->fileName() : QString();
+	return QString();
 }
 
 void CMainWindow::escapeHtmlChars(QStringList &strings)
