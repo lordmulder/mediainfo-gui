@@ -16,6 +16,6 @@
     <file>res/ico_shellext.png</file>
     <file>res/loading.png</file>
     <file>res/logo.png</file>
-    <file>res/MediaInfo.i386.exe</file>
+    <file>res/MediaInfo.i686.exe</file>
   </qresource>
 </RCC>
