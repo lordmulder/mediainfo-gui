@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // MediaInfoXP
-// Copyright (C) 2004-2014 LoRd_MuldeR <MuldeR2@GMX.de>
+// Copyright (C) 2004-2015 LoRd_MuldeR <MuldeR2@GMX.de>
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -21,15 +21,15 @@
 
 //Version
 static unsigned int mixp_versionMajor = 2;
-static unsigned int mixp_versionMinor = 13;
+static unsigned int mixp_versionMinor = 14;
 
 //MediaInfo Version
 static unsigned int mixp_miVersionMajor = 0;
 static unsigned int mixp_miVersionMinor = 7;
-static unsigned int mixp_miVersionPatch = 71;
+static unsigned int mixp_miVersionPatch = 72;
 
 //MediaInfo Checksum
-static const char *mixp_checksum = "aee8cf5f0037bc1d02d148f0c780c9c9f61ac6db";
+static const char *mixp_checksum = "493bcbb64e665cd17835b1c1d84ec1d52c0e8361";
 
 //Build date
 static const char *mixp_buildDate = __DATE__;
