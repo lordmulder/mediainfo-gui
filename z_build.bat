@@ -74,7 +74,7 @@ echo BEGIN PACKAGING
 echo ---------------------------------------------------------------------
 set "PACK_PATH=%TMP%\~%RANDOM%%RANDOM%.tmp"
 mkdir "%PACK_PATH%"
-copy "%~dp0\bin\Win32\Release\*.exe" "%PACK_PATH%"
+copy "%~dp0\bin\Win32\Release_Static\*.exe" "%PACK_PATH%"
 copy "%~dp0\Copying.txt" "%PACK_PATH%"
 copy "%~dp0\doc\*.txt" "%PACK_PATH%"
 copy "%~dp0\doc\*.html" "%PACK_PATH%"
