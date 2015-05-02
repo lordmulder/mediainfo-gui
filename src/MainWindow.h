@@ -25,14 +25,18 @@
 #include <QDate>
 
 //UIC forward declartion
-namespace Ui {
+namespace Ui
+{
 	class MainWindow;
+}
+namespace MUtils
+{
+	class IPCChannel;
 }
 class QProcess;
 class QLabel;
 class QFile;
-class mixp_icon_t;
-class IPC;
+class IPCReceiveThread;
 
 //MainWindow class
 class CMainWindow: public QMainWindow
@@ -40,7 +44,7 @@ class CMainWindow: public QMainWindow
 	Q_OBJECT
 
 public:
-	CMainWindow(const QString &tempFolder, IPC *const ipc, QWidget *parent = 0);
+	CMainWindow(const QString &tempFolder, MUtils::IPCChannel *const ipc, QWidget *parent = 0);
 	~CMainWindow(void);
 
 private slots:
@@ -58,7 +62,7 @@ private slots:
 	void initShellExtension(void);
 	void updateShellExtension(bool checked);
 	void updateLineWrapping(bool checked);
-	void fileReceived(const QString &path);
+	void received(const quint32 &command, const QString &message);
 
 protected:
 	virtual void showEvent(QShowEvent *event);
@@ -85,14 +89,13 @@ private:
 	int m_status;
 	const QString &m_tempFolder;
 
-	QFile *m_mediaInfoHandle;
-	QProcess *m_process;
-	QLabel *m_floatingLabel;
+	QScopedPointer<IPCReceiveThread> m_ipcThread;
+	QScopedPointer<QFile> m_mediaInfoHandle;
+	QScopedPointer<QProcess> m_process;
+	QScopedPointer<QLabel> m_floatingLabel;
 	QStringList m_pendingFiles;
 	QStringList m_outputLines;
-	mixp_icon_t *m_icon;
-	IPC *const m_ipc;
-	
+
 	const QList<QPair<const QString, const QString>> m_htmlEscape;
 
 	QString getMediaInfoPath(void);

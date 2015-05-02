@@ -21,26 +21,14 @@
 
 //MUTils
 #include <MUtils/Startup.h>
+#include <MUtils/IPCChannel.h>
 #include <MUtils/Version.h>
-
-//StdLib
-#include <cstdio>
-#include <iostream>
-#include <fstream>
-#include <ctime>
-#include <signal.h>
-
-#pragma intrinsic(_InterlockedExchange)
+#include <MUtils/OSSupport.h>
 
 //Qt
 #include <QApplication>
 #include <QDir>
-
-//Win32
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <io.h>
-#include <fcntl.h>
+#include <QHash>
 
 #ifdef QT_NODLL
 	#include <QtPlugin>
@@ -54,34 +42,28 @@
 #include "IPC.h"
 
 ///////////////////////////////////////////////////////////////////////////////
-// Debug Console
+// Multi-instance handling
 ///////////////////////////////////////////////////////////////////////////////
 
-bool g_bHaveConsole = false;
-
-static void init_console(void)
+static void mixp_handle_multi_instance(MUtils::IPCChannel *const ipcChannel)
 {
-	if(AllocConsole())
+	bool bHaveFile = false;
+
+	//We are *not* the first instance -> pass all file names to the running instance
+	const MUtils::OS::ArgumentMap arguments = MUtils::OS::arguments();
+	const QStringList files = arguments.values("open");
+	for(QStringList::ConstIterator iter = files.constBegin(); iter != files.constEnd(); iter++)
 	{
-		int hCrtStdOut = _open_osfhandle((intptr_t) GetStdHandle(STD_OUTPUT_HANDLE), _O_WRONLY);
-		int hCrtStdErr = _open_osfhandle((intptr_t) GetStdHandle(STD_ERROR_HANDLE),  _O_WRONLY);
-		FILE *hfStdOut = (hCrtStdOut >= 0) ? _fdopen(hCrtStdOut, "wb") : NULL;
-		FILE *hfStdErr = (hCrtStdErr >= 0) ? _fdopen(hCrtStdErr, "wb") : NULL;
-		if(hfStdOut) { *stdout = *hfStdOut; std::cout.rdbuf(new std::filebuf(hfStdOut)); }
-		if(hfStdErr) { *stderr = *hfStdErr; std::cerr.rdbuf(new std::filebuf(hfStdErr)); }
-
-		HWND hwndConsole = GetConsoleWindow();
-		if((hwndConsole != NULL) && (hwndConsole != INVALID_HANDLE_VALUE))
+		if(IPC::sendAsync(ipcChannel, IPC::COMMAND_OPEN, *iter))
 		{
-			HMENU hMenu = GetSystemMenu(hwndConsole, 0);
-			EnableMenuItem(hMenu, SC_CLOSE, MF_BYCOMMAND | MF_GRAYED);
-			RemoveMenu(hMenu, SC_CLOSE, MF_BYCOMMAND);
-			SetWindowPos(hwndConsole, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);
-			SetWindowLong(hwndConsole, GWL_STYLE, GetWindowLong(hwndConsole, GWL_STYLE) & (~WS_MAXIMIZEBOX) & (~WS_MINIMIZEBOX));
-			SetWindowPos(hwndConsole, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE|SWP_NOSIZE|SWP_NOZORDER|SWP_FRAMECHANGED);
+			bHaveFile = true;
 		}
+	}
 
-		g_bHaveConsole = true;
+	//If no file was sent, we will at least try to bring the other instance to front
+	if(!bHaveFile)
+	{
+		IPC::sendAsync(ipcChannel, IPC::COMMAND_PING, "?");
 	}
 }
 
@@ -103,36 +85,19 @@ static int mixp_main(int &argc, char **argv)
 	QScopedPointer<QApplication> application(new QApplication(argc, argv));
 
 	//Create IPC
-	QScopedPointer<IPC> ipc(new IPC());
-	
-	//Is this the *first* instance?
-	if(ipc->initialize() == 0)
+	QScopedPointer<MUtils::IPCChannel> ipcChannel(new MUtils::IPCChannel("mediainfo-xp", qHash(QString("%0@%1").arg(QString::fromLatin1(mixp_buildDate), QString::fromLatin1(mixp_buildTime))), "instance"));
+	const int ipcMode = ipcChannel->initialize();
+	if((ipcMode != MUtils::IPCChannel::RET_SUCCESS_MASTER) && (ipcMode != MUtils::IPCChannel::RET_SUCCESS_SLAVE))
 	{
-		//We are *not* the first instance -> pass all file names to the running instance
-		const QStringList arguments = qApp->arguments();
-		bool bHaveFile = false;
-		for(QStringList::ConstIterator iter = arguments.constBegin(); iter != arguments.constEnd(); iter++)
-		{
-			if(QString::compare(*iter, "--open", Qt::CaseInsensitive) == 0)
-			{
-				if(++iter != arguments.constEnd())
-				{
-					if(ipc->sendAsync(*iter))
-					{
-						bHaveFile = true;
-						continue;
-					}
-				}
-				break;
-			}
-		}
-		//If no file was sent, we will at least try to bring the other instance to front
-		if(!bHaveFile)
-		{
-			ipc->sendAsync("?");
-		}
+		qFatal("The IPC initialization has failed!");
+		return EXIT_FAILURE;
+	}
 
-		return 42;
+	//Handle multiple instances
+	if(ipcMode == MUtils::IPCChannel::RET_SUCCESS_SLAVE)
+	{
+		mixp_handle_multi_instance(ipcChannel.data());
+		return EXIT_SUCCESS;
 	}
 
 	//Get temp folder
@@ -140,15 +105,12 @@ static int mixp_main(int &argc, char **argv)
 	qDebug("TEMP folder is:\n%s\n", QDir::toNativeSeparators(tempFolder).toUtf8().constData());
 
 	//Create main window
-	QScopedPointer<CMainWindow> mainWindow(new CMainWindow(tempFolder, ipc.data()));
+	QScopedPointer<CMainWindow> mainWindow(new CMainWindow(tempFolder, ipcChannel.data()));
 	mainWindow->show();
 
 	//Run application
 	const int exit_code = application->exec();
 	qDebug("\nTime to say goodbye... (%d)\n", exit_code);
-	
-	//Stop IPC
-	ipc->stopListening();
 
 	return exit_code;
 }

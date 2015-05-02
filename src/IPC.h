@@ -23,78 +23,63 @@
 
 #include <QThread>
 
-class QSharedMemory;
-class QSystemSemaphore;
-class IPCSendThread;
-class IPCReceiveThread;
-
-class IPC : public QObject
+namespace MUtils
 {
-	Q_OBJECT
-	friend class IPCReceiveThread;
-	friend class IPCSendThread;
-
-public:
-	IPC(void);
-	~IPC(void);
-
-	int initialize(void);
-	bool sendAsync(const QString &str, const int timeout = 5000);
-
-public slots:
-	void startListening(void);
-	void stopListening(void);
-
-signals:
-	void receivedStr(const QString &str);
-
-protected:
-	bool popStr(QString &str);
-	bool pushStr(const QString &str);
-
-	int m_initialized;
-
-	QSharedMemory *m_sharedMemory;
-	QSystemSemaphore *m_semaphoreRd;
-	QSystemSemaphore *m_semaphoreWr;
-	IPCReceiveThread *m_recvThread;
-};
+	class IPCChannel;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
 class IPCSendThread : public QThread
 {
 	Q_OBJECT
-	friend class IPC;
 
-protected:
-	IPCSendThread(IPC *ipc, const QString &str);
+public:
+	IPCSendThread(MUtils::IPCChannel *const ipc, const quint32 &command, const QString &message);
 	inline bool result(void) { return m_result; }
 
 	virtual void run(void);
 
 private:
 	volatile bool m_result;
-	IPC *const m_ipc;
-	const QString m_str;
+	MUtils::IPCChannel *const m_ipc;
+	const quint32 m_command;
+	const QString m_message;
 };
 
 class IPCReceiveThread : public QThread
 {
 	Q_OBJECT
-	friend class IPC;
+
+public:
+	IPCReceiveThread(MUtils::IPCChannel *const ipc);
+	void stop(void);
 
 protected:
-	IPCReceiveThread(IPC *ipc);
-	inline void stop(void) { m_stopped = true; }
-
 	virtual void run(void);
 
 signals:
-	void receivedStr(const QString &str);
+	void received(const quint32 &command, const QString &message);
 
 private:
 	void receiveLoop(void);
 	volatile bool m_stopped;
-	IPC *const m_ipc;
+	MUtils::IPCChannel *const m_ipc;
+};
+
+class IPC
+{
+public:
+	enum
+	{
+		COMMAND_NONE = 0,
+		COMMAND_PING = 1,
+		COMMAND_OPEN = 2
+	}
+	ipc_command_t;
+
+	static bool sendAsync(MUtils::IPCChannel *const ipc, const quint32 &command, const QString &message, const quint32 &timeout = 5000);
+
+private:
+	IPC(void) { throw 666; }
 };

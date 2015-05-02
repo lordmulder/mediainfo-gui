@@ -82,11 +82,11 @@ static const int FILE_RECEIVE_DELAY = 1750;
 // Constructor
 ////////////////////////////////////////////////////////////
 
-CMainWindow::CMainWindow(const QString &tempFolder, IPC *const ipc, QWidget *parent)
+CMainWindow::CMainWindow(const QString &tempFolder, MUtils::IPCChannel *const ipc, QWidget *parent)
 :
 	QMainWindow(parent),
 	m_tempFolder(tempFolder),
-	m_ipc(ipc),
+	m_ipcThread(new IPCReceiveThread(ipc)),
 	m_htmlEscape(HTML_ESCAPE()),
 	m_status(APP_STATUS_STARTING),
 	ui(new Ui::MainWindow)
@@ -100,23 +100,23 @@ CMainWindow::CMainWindow(const QString &tempFolder, IPC *const ipc, QWidget *par
 	MUtils::GUI::set_window_icon(this, QIcon(":/res/logo.png"), true);
 
 	//Setup links
-	ui->actionLink_MuldeR->setData(QVariant(QString::fromLatin1(LINK_MULDER)));
+	ui->actionLink_MuldeR   ->setData(QVariant(QString::fromLatin1(LINK_MULDER)));
 	ui->actionLink_MediaInfo->setData(QVariant(QString::fromLatin1(LINK_MEDIAINFO)));
-	ui->actionLink_Discuss->setData(QVariant(QString::fromLatin1(LINK_DISCUSS)));
+	ui->actionLink_Discuss  ->setData(QVariant(QString::fromLatin1(LINK_DISCUSS)));
 
 	//Setup connections
-	connect(ui->analyzeButton,         SIGNAL(clicked()),            this, SLOT(analyzeButtonClicked()));
-	connect(ui->actionOpen,            SIGNAL(triggered()),          this, SLOT(analyzeButtonClicked()));
-	connect(ui->actionSave,            SIGNAL(triggered()),          this, SLOT(saveButtonClicked()));
-	connect(ui->actionCopyToClipboard, SIGNAL(triggered()),          this, SLOT(copyToClipboardButtonClicked()));
-	connect(ui->actionClear,           SIGNAL(triggered()),          this, SLOT(clearButtonClicked()));
-	connect(ui->actionLink_MuldeR,     SIGNAL(triggered()),          this, SLOT(linkTriggered()));
-	connect(ui->actionLink_MediaInfo,  SIGNAL(triggered()),          this, SLOT(linkTriggered()));
-	connect(ui->actionLink_Discuss,    SIGNAL(triggered()),          this, SLOT(linkTriggered()));
-	connect(ui->actionAbout,           SIGNAL(triggered()),          this, SLOT(showAboutScreen()));
-	connect(ui->actionShellExtension,  SIGNAL(toggled(bool)),        this, SLOT(updateShellExtension(bool)));
-	connect(ui->actionLineWrapping,    SIGNAL(toggled(bool)),        this, SLOT(updateLineWrapping(bool)));
-	connect(m_ipc,                     SIGNAL(receivedStr(QString)), this, SLOT(fileReceived(QString)));
+	connect(ui->analyzeButton,         SIGNAL(clicked()),                  this, SLOT(analyzeButtonClicked()));
+	connect(ui->actionOpen,            SIGNAL(triggered()),                this, SLOT(analyzeButtonClicked()));
+	connect(ui->actionSave,            SIGNAL(triggered()),                this, SLOT(saveButtonClicked()));
+	connect(ui->actionCopyToClipboard, SIGNAL(triggered()),                this, SLOT(copyToClipboardButtonClicked()));
+	connect(ui->actionClear,           SIGNAL(triggered()),                this, SLOT(clearButtonClicked()));
+	connect(ui->actionLink_MuldeR,     SIGNAL(triggered()),                this, SLOT(linkTriggered()));
+	connect(ui->actionLink_MediaInfo,  SIGNAL(triggered()),                this, SLOT(linkTriggered()));
+	connect(ui->actionLink_Discuss,    SIGNAL(triggered()),                this, SLOT(linkTriggered()));
+	connect(ui->actionAbout,           SIGNAL(triggered()),                this, SLOT(showAboutScreen()));
+	connect(ui->actionShellExtension,  SIGNAL(toggled(bool)),              this, SLOT(updateShellExtension(bool)));
+	connect(ui->actionLineWrapping,    SIGNAL(toggled(bool)),              this, SLOT(updateLineWrapping(bool)));
+	connect(m_ipcThread.data(),        SIGNAL(received(quint32, QString)), this, SLOT(received(quint32, QString)));
 	ui->versionLabel->installEventFilter(this);
 
 	//Context menu
@@ -124,7 +124,7 @@ CMainWindow::CMainWindow(const QString &tempFolder, IPC *const ipc, QWidget *par
 	ui->textBrowser->insertActions(0, ui->menuFile->actions());
 
 	//Create label
-	m_floatingLabel = new QLabel(ui->textBrowser);
+	m_floatingLabel.reset(new QLabel(ui->textBrowser));
 	m_floatingLabel->setText(QString::fromLatin1(STATUS_BLNK));
 	m_floatingLabel->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 	m_floatingLabel->show();
@@ -132,10 +132,6 @@ CMainWindow::CMainWindow(const QString &tempFolder, IPC *const ipc, QWidget *par
 	SET_FONT_BOLD(m_floatingLabel, true);
 	m_floatingLabel->setContextMenuPolicy(Qt::ActionsContextMenu);
 	m_floatingLabel->insertActions(0, ui->textBrowser->actions());
-	
-	//Clear
-	m_mediaInfoHandle = NULL;
-	m_process = NULL;
 
 	//Randomize
 	qsrand((uint) time(NULL));
@@ -147,13 +143,21 @@ CMainWindow::CMainWindow(const QString &tempFolder, IPC *const ipc, QWidget *par
 
 CMainWindow::~CMainWindow(void)
 {
-	if(m_mediaInfoHandle)
+	if(!m_ipcThread.isNull())
+	{
+		m_ipcThread->stop();
+		if(!m_ipcThread->wait(5000))
+		{
+			qWarning("IPC thread doesn't respond -> terminating!");
+			m_ipcThread->terminate();
+			m_ipcThread->wait();
+		}
+	}
+
+	if(!m_mediaInfoHandle.isNull())
 	{
 		m_mediaInfoHandle->remove();
-		MUTILS_DELETE(m_mediaInfoHandle);
 	}
-	MUTILS_DELETE(m_process);
-	MUTILS_DELETE(m_floatingLabel);
 }
 
 ////////////////////////////////////////////////////////////
@@ -178,21 +182,14 @@ void CMainWindow::showEvent(QShowEvent *event)
 
 	if(m_status == APP_STATUS_STARTING)
 	{
-		const QStringList arguments = qApp->arguments();
-		for(QStringList::ConstIterator iter = arguments.constBegin(); iter != arguments.constEnd(); iter++)
+		const MUtils::OS::ArgumentMap arguments = MUtils::OS::arguments();
+		const QStringList files = arguments.values("open");
+		for(QStringList::ConstIterator iter = files.constBegin(); iter != files.constEnd(); iter++)
 		{
-			if(QString::compare(*iter, "--open", Qt::CaseInsensitive) == 0)
+			QFileInfo currentFile = QFileInfo(*iter);
+			if(currentFile.exists() && currentFile.isFile())
 			{
-				if(++iter != arguments.constEnd())
-				{
-					QFileInfo currentFile = QFileInfo(*iter);
-					if(currentFile.exists() && currentFile.isFile())
-					{
-						m_pendingFiles << currentFile.canonicalFilePath();
-					}
-					continue;
-				}
-				break;
+				m_pendingFiles << currentFile.canonicalFilePath();
 			}
 		}
 		if(!m_pendingFiles.empty())
@@ -201,9 +198,9 @@ void CMainWindow::showEvent(QShowEvent *event)
 			QTimer::singleShot(FILE_RECEIVE_DELAY, this, SLOT(analyzeFiles()));
 		}
 
-		QTimer::singleShot(125, m_ipc, SLOT(startListening()));
 		QTimer::singleShot(250, this, SLOT(initShellExtension()));
-		
+		m_ipcThread->start();
+
 		if(m_status == APP_STATUS_STARTING)
 		{
 			m_status = APP_STATUS_IDLE;
@@ -313,15 +310,15 @@ void CMainWindow::analyzeFiles(void)
 	}
 	
 	//Create process, if not done yet
-	if(!m_process)
+	if(m_process.isNull())
 	{
-		m_process = new QProcess();
+		m_process.reset(new QProcess());
 		m_process->setProcessChannelMode(QProcess::MergedChannels);
 		m_process->setReadChannel(QProcess::StandardOutput);
-		connect(m_process, SIGNAL(readyReadStandardError()), this, SLOT(outputAvailable()));
-		connect(m_process, SIGNAL(readyReadStandardOutput()), this, SLOT(outputAvailable()));
-		connect(m_process, SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(processFinished()));
-		connect(m_process, SIGNAL(error(QProcess::ProcessError)), this, SLOT(processFinished()));
+		connect(m_process.data(), SIGNAL(readyReadStandardError()),           this, SLOT(outputAvailable()));
+		connect(m_process.data(), SIGNAL(readyReadStandardOutput()),          this, SLOT(outputAvailable()));
+		connect(m_process.data(), SIGNAL(finished(int,QProcess::ExitStatus)), this, SLOT(processFinished()));
+		connect(m_process.data(), SIGNAL(error(QProcess::ProcessError)),      this, SLOT(processFinished()));
 	}
 
 	//Still running?
@@ -686,13 +683,16 @@ void CMainWindow::updateSize(void)
 	}
 }
 
-void CMainWindow::fileReceived(const QString &str)
+void CMainWindow::received(const quint32 &command, const QString &message)
 {
-	MUtils::GUI::bring_to_front(this);
-
-	if(str.compare("?") != 0)
+	if((command == IPC::COMMAND_PING) || (command == IPC::COMMAND_OPEN))
 	{
-		qDebug("Received file: %s", str.toUtf8().constData());
+		MUtils::GUI::bring_to_front(this);
+	}
+
+	if((command == IPC::COMMAND_OPEN) && (!message.isEmpty()))
+	{
+		qDebug("Received file: %s", message.toUtf8().constData());
 	
 		if((m_status != APP_STATUS_IDLE) && (m_status != APP_STATUS_AWAITING))
 		{
@@ -700,7 +700,7 @@ void CMainWindow::fileReceived(const QString &str)
 			return;
 		}
 
-		const QString absPath = QFileInfo(QDir::fromNativeSeparators(str)).absoluteFilePath();
+		const QString absPath = QFileInfo(QDir::fromNativeSeparators(message)).absoluteFilePath();
 		QFileInfo fileInfo(absPath);
 		if(fileInfo.exists() && fileInfo.isFile())
 		{
@@ -711,10 +711,6 @@ void CMainWindow::fileReceived(const QString &str)
 				QTimer::singleShot(FILE_RECEIVE_DELAY, this, SLOT(analyzeFiles()));
 			}
 		}
-	}
-	else
-	{
-		qDebug("Received ping from another instance!");
 	}
 }
 
@@ -752,19 +748,18 @@ QString CMainWindow::getMediaInfoPath(void)
 	}
 	
 	//Validate file content, if already extracted
-	if(m_mediaInfoHandle)
+	if(!m_mediaInfoHandle.isNull())
 	{
-		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle))
+		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data()))
 		{
 			return m_mediaInfoHandle->fileName();
 		}
 		m_mediaInfoHandle->remove();
-		MUTILS_DELETE(m_mediaInfoHandle);
 	}
 
 	//Extract MediaInfo binary now!
 	qDebug("MediaInfo binary not existing yet, going to extract now...\n");
-	m_mediaInfoHandle = new QFile(QString("%1/MediaInfo_%2.exe").arg(m_tempFolder, QString().sprintf("%04x", qrand() % 0xFFFF)));
+	m_mediaInfoHandle.reset(new QFile(QString("%1/MediaInfo_%2.exe").arg(m_tempFolder, QString().sprintf("%04x", qrand() % 0xFFFF))));
 	if(m_mediaInfoHandle->open(QIODevice::ReadWrite | QIODevice::Truncate))
 	{
 		if(m_mediaInfoHandle->write(reinterpret_cast<const char*>(mediaInfoRes.data()), mediaInfoRes.size()) == mediaInfoRes.size())
@@ -775,31 +770,27 @@ QString CMainWindow::getMediaInfoPath(void)
 			{
 				qWarning("Failed to open MediaInfo binary for reading!\n");
 				m_mediaInfoHandle->remove();
-				MUTILS_DELETE(m_mediaInfoHandle);
 			}
 		}
 		else
 		{
 			qWarning("Failed to write data to MediaInfo binary file!\n");
 			m_mediaInfoHandle->remove();
-			MUTILS_DELETE(m_mediaInfoHandle);
 		}
 	}
 	else
 	{
 		qWarning("Failed to open MediaInfo binary for writing!\n");
-		MUTILS_DELETE(m_mediaInfoHandle);
 	}
 
 	//Validate file content, after it has been extracted
-	if(m_mediaInfoHandle)
+	if(!m_mediaInfoHandle.isNull())
 	{
-		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle))
+		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data()))
 		{
 			return m_mediaInfoHandle->fileName();
 		}
 		m_mediaInfoHandle->remove();
-		MUTILS_DELETE(m_mediaInfoHandle);
 	}
 
 	return QString();

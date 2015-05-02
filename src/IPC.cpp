@@ -23,6 +23,7 @@
 
 //MUtils
 #include "MUtils/Global.h"
+#include "MUtils/IPCChannel.h"
 
 //Qt
 #include <QSharedMemory>
@@ -48,9 +49,9 @@ mixp_ipc_t;
 // Send Thread
 ///////////////////////////////////////////////////////////////////////////////
 
-IPCSendThread::IPCSendThread(IPC *ipc, const QString &str)
+IPCSendThread::IPCSendThread(MUtils::IPCChannel *const ipc, const quint32 &command, const QString &message)
 :
-	m_ipc(ipc), m_str(str)
+	m_ipc(ipc), m_command(command), m_message(message)
 {
 	m_result = false;
 }
@@ -59,10 +60,11 @@ void IPCSendThread::run(void)
 {
 	try
 	{
-		m_result = m_ipc->pushStr(m_str);
+		m_result = m_ipc->send(m_command, 0, QStringList() << m_message);
 	}
 	catch(...)
 	{
+		qWarning("Exception in IPC receive thread!");
 		m_result = false;
 	}
 }
@@ -72,7 +74,7 @@ void IPCSendThread::run(void)
 // Receive Thread
 ///////////////////////////////////////////////////////////////////////////////
 
-IPCReceiveThread::IPCReceiveThread(IPC *ipc)
+IPCReceiveThread::IPCReceiveThread(MUtils::IPCChannel *const ipc)
 :
 	m_ipc(ipc)
 {
@@ -95,14 +97,24 @@ void IPCReceiveThread::receiveLoop(void)
 {
 	while(!m_stopped)
 	{
-		QString temp;
-		if(m_ipc->popStr(temp))
+		quint32 command, flags;
+		QStringList params;
+		if(m_ipc->read(command, flags, params))
 		{
-			if(!temp.isEmpty())
+			if((command != IPC::COMMAND_NONE) && (!params.isEmpty()))
 			{
-				emit receivedStr(temp);
+				emit received(command, params.first());
 			}
 		}
+	}
+}
+
+void IPCReceiveThread::stop(void)
+{
+	if(!m_stopped)
+	{
+		m_stopped = true;
+		IPC::sendAsync(m_ipc, IPC::COMMAND_NONE, "exit");
 	}
 }
 
@@ -110,177 +122,9 @@ void IPCReceiveThread::receiveLoop(void)
 // IPC Class
 ///////////////////////////////////////////////////////////////////////////////
 
-IPC::IPC(void)
+bool IPC::sendAsync(MUtils::IPCChannel *const ipc, const quint32 &command, const QString &message, const quint32 &timeout)
 {
-	m_initialized  = -1;
-	m_sharedMemory = NULL;
-	m_semaphoreWr  = NULL;
-	m_semaphoreRd  = NULL;
-	m_recvThread   = NULL;
-}
-
-IPC::~IPC(void)
-{
-	if(m_recvThread && m_recvThread->isRunning())
-	{
-		qWarning("Receive thread still running -> terminating!");
-		m_recvThread->terminate();
-		m_recvThread->wait();
-	}
-	
-	MUTILS_DELETE(m_recvThread);
-	MUTILS_DELETE(m_sharedMemory);
-	MUTILS_DELETE(m_semaphoreWr);
-	MUTILS_DELETE(m_semaphoreRd);
-}
-
-int IPC::initialize(void)
-{
-	if(m_initialized >= 0)
-	{
-		return m_initialized;
-	}
-
-	m_semaphoreWr = new QSystemSemaphore(s_key_sema_wr, MAX_ENTRIES);
-	m_semaphoreRd = new QSystemSemaphore(s_key_sema_rd, 0);
-
-	if((m_semaphoreWr->error() != QSystemSemaphore::NoError) || (m_semaphoreRd->error() != QSystemSemaphore::NoError))
-	{
-		qWarning("IPC: Failed to created system semaphores!");
-		return -1;
-	}
-
-	m_sharedMemory = new QSharedMemory(s_key_smemory, this);
-
-	if(m_sharedMemory->create(sizeof(mixp_ipc_t)))
-	{
-		memset(m_sharedMemory->data(), 0, sizeof(mixp_ipc_t));
-		m_initialized = 1;
-		return 1;
-	}
-
-	if(m_sharedMemory->error() == QSharedMemory::AlreadyExists)
-	{
-		qDebug("Not the first instance -> attaching to existing shared memory");
-		if(m_sharedMemory->attach())
-		{
-			m_initialized = 0;
-			return 0;
-		}
-	}
-
-	qWarning("IPC: Failed to attach to the shared memory!");
-	return -1;
-}
-
-bool IPC::pushStr(const QString &str)
-{
-	if(m_initialized < 0)
-	{
-		qWarning("Error: IPC not initialized yet!");
-		return false;
-	}
-
-	if(!m_semaphoreWr->acquire())
-	{
-		qWarning("IPC: Failed to acquire semaphore!");
-		return false;
-	}
-
-	if(!m_sharedMemory->lock())
-	{
-		qWarning("IPC: Failed to lock shared memory!");
-		return false;
-	}
-
-	bool success = true;
-
-	try
-	{
-		mixp_ipc_t *memory = (mixp_ipc_t*) m_sharedMemory->data();
-		if(memory->counter < MAX_ENTRIES)
-		{
-			wcsncpy_s(memory->data[memory->posWr], MAX_STR_LEN, (wchar_t*)str.utf16(), _TRUNCATE);
-			memory->posWr = (memory->posWr + 1) % MAX_ENTRIES;
-			memory->counter++;
-		}
-		else
-		{
-			qWarning("IPC: Shared memory is full -> cannot push string!");
-			success = false;
-		}
-	}
-	catch(...)
-	{
-		/*ignore any exception*/
-	}
-
-	m_sharedMemory->unlock();
-
-	if(success)
-	{
-		m_semaphoreRd->release();
-	}
-
-	return success;
-}
-
-bool IPC::popStr(QString &str)
-{
-	if(m_initialized < 0)
-	{
-		qWarning("Error: IPC not initialized yet!");
-		return false;
-	}
-
-	if(!m_semaphoreRd->acquire())
-	{
-		qWarning("IPC: Failed to acquire semaphore!");
-		return false;
-	}
-
-	if(!m_sharedMemory->lock())
-	{
-		qWarning("IPC: Failed to lock shared memory!");
-		return false;
-	}
-
-	bool success = true;
-
-	try
-	{
-		mixp_ipc_t *memory = (mixp_ipc_t*) m_sharedMemory->data();
-		if(memory->counter > 0)
-		{
-			memory->data[memory->posRd][MAX_STR_LEN-1] = L'\0';
-			str = QString::fromUtf16((const ushort*)memory->data[memory->posRd]);
-			memory->posRd = (memory->posRd + 1) % MAX_ENTRIES;
-			memory->counter--;
-		}
-		else
-		{
-			qWarning("IPC: Shared memory is empty -> cannot pop string!");
-			success = false;
-		}
-	}
-	catch(...)
-	{
-		/*ignore any exception*/
-	}
-
-	m_sharedMemory->unlock();
-
-	if(success)
-	{
-		m_semaphoreWr->release();
-	}
-
-	return success;
-}
-
-bool IPC::sendAsync(const QString &str, const int timeout)
-{
-	IPCSendThread sendThread(this, str);
+	IPCSendThread sendThread(ipc, command, message);
 	sendThread.start();
 
 	if(!sendThread.wait(timeout))
@@ -292,43 +136,4 @@ bool IPC::sendAsync(const QString &str, const int timeout)
 	}
 
 	return sendThread.result();
-}
-
-void IPC::startListening(void)
-{
-	if(!m_recvThread)
-	{
-		m_recvThread = new IPCReceiveThread(this);
-		connect(m_recvThread, SIGNAL(receivedStr(QString)), this, SIGNAL(receivedStr(QString)), Qt::QueuedConnection);
-	}
-
-	if(!m_recvThread->isRunning())
-	{
-		m_recvThread->start();
-	}
-	else
-	{
-		qWarning("Receive thread was already running!");
-	}
-
-}
-
-void IPC::stopListening(void)
-{
-	if(m_recvThread && m_recvThread->isRunning())
-	{
-		m_recvThread->stop();
-		m_semaphoreRd->release();
-
-		if(!m_recvThread->wait(5000))
-		{
-			qWarning("Receive thread seems deadlocked -> terminating!");
-			m_recvThread->terminate();
-			m_recvThread->wait();
-		}
-	}
-	else
-	{
-		qWarning("Receive thread was not running!");
-	}
 }

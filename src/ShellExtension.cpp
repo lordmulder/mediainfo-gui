@@ -52,7 +52,7 @@ bool ShellExtension::setEnabled(bool enabled)
 		if(MUtils::Registry::reg_value_write(MUtils::Registry::root_user, MIXP_REGISTRY_KEY, QString(), tr("Analyze file with MediaInfoXP")))
 		{
 			const QString appPath = QDir::toNativeSeparators(QApplication::applicationFilePath());
-			const QString command = QString().sprintf("\"%ls\" --open \"%%1\"", appPath.utf16());
+			const QString command = QString().sprintf("\"%ls\" --open=\"%%1\"", appPath.utf16());
 			if(MUtils::Registry::reg_value_write(MUtils::Registry::root_user, MIXP_REGISTRY_KEY"\\command", QString(), command))
 			{
 				if(MUtils::Registry::reg_value_write(MUtils::Registry::root_user, MIXP_REGISTRY_KEY, MIXP_REGISTRY_VAL, 1))
