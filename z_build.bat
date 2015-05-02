@@ -59,11 +59,11 @@ REM ///////////////////////////////////////////////////////////////////////////
 echo ---------------------------------------------------------------------
 echo BEGIN BUILD
 echo ---------------------------------------------------------------------
-MSBuild.exe /property:Configuration=release /target:clean   "%~dp0\MediaInfoXP.sln"
+MSBuild.exe /property:Configuration=release_static /target:clean   "%~dp0\MediaInfoXP.sln"
 if not "%ERRORLEVEL%"=="0" goto BuildError
-MSBuild.exe /property:Configuration=release /target:rebuild "%~dp0\MediaInfoXP.sln"
+MSBuild.exe /property:Configuration=release_static /target:rebuild "%~dp0\MediaInfoXP.sln"
 if not "%ERRORLEVEL%"=="0" goto BuildError
-MSBuild.exe /property:Configuration=release /target:build   "%~dp0\MediaInfoXP.sln"
+MSBuild.exe /property:Configuration=release_static /target:build   "%~dp0\MediaInfoXP.sln"
 if not "%ERRORLEVEL%"=="0" goto BuildError
 
 REM ///////////////////////////////////////////////////////////////////////////

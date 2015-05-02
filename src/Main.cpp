@@ -123,3 +123,13 @@ int main(int argc, char* argv[])
 {
 	MUtils::Startup::startup(argc, argv, mixp_main, "MediaInfoXP", false);
 }
+
+extern "C"
+{
+	int mainCRTStartup(void);
+
+	int mxp_entry_point(void)
+	{
+		return mainCRTStartup();
+	}
+}
