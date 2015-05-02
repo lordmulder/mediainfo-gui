@@ -42,30 +42,24 @@
     <ClCompile Include="src\MainWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="tmp\Common\moc\MOC_MainWindow.cpp">
-      <Filter>Source Files\Generated</Filter>
-    </ClCompile>
-    <ClCompile Include="tmp\Common\rcc\RCC_MediaInfoXP.cpp">
-      <Filter>Source Files\Generated</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Utils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\ShellExtension.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\IPC.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="tmp\Common\moc\MOC_IPC.cpp">
+    <ClCompile Include="tmp\MediaInfoXP\MOC_IPC.cpp">
+      <Filter>Source Files\Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="tmp\MediaInfoXP\MOC_MainWindow.cpp">
+      <Filter>Source Files\Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="tmp\MediaInfoXP\QRC_MediaInfoXP.cpp">
       <Filter>Source Files\Generated</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Config.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ShellExtension.h">

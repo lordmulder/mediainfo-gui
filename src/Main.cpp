@@ -19,6 +19,10 @@
 // http://www.gnu.org/licenses/gpl-2.0.txt
 ///////////////////////////////////////////////////////////////////////////////
 
+//MUTils
+#include <MUtils/Startup.h>
+#include <MUtils/Version.h>
+
 //StdLib
 #include <cstdio>
 #include <iostream>
@@ -48,7 +52,6 @@
 #include "Config.h"
 #include "MainWindow.h"
 #include "IPC.h"
-#include "Utils.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Debug Console
@@ -86,27 +89,21 @@ static void init_console(void)
 // MAIN function
 ///////////////////////////////////////////////////////////////////////////////
 
-int mixp_main(int argc, char* argv[])
+static int mixp_main(int &argc, char **argv)
 {
-	//Show console?
-	bool bConsole = MIXP_CONSOLE;
-	for(int i = 1; i < argc; i++)
-	{
-		if(_stricmp(argv[i], "--console") == 0) bConsole = true;
-		if(_stricmp(argv[i], "--no-console") == 0) bConsole = false;
-	}
-
-	if(bConsole) init_console();
-
+	//Print the logo
 	qDebug("MediaInfoXP v%u.%02u, built on %s at %s.", mixp_versionMajor, mixp_versionMinor, mixp_buildDate, mixp_buildTime);
 	qDebug("Copyright (c) 2004-%s LoRd_MuldeR <mulder2@gmx.de>. Some rights reserved.", &mixp_buildDate[7]);
 	qDebug("Built with Qt v%s, running with Qt v%s.\n", QT_VERSION_STR, qVersion());
 
+	//Print library version
+	qDebug("This application is powerd by MUtils library v%u.%02u (%s, %s).\n", MUtils::Version::lib_version_major(), MUtils::Version::lib_version_minor(), MUTILS_UTF8(MUtils::Version::lib_build_date().toString(Qt::ISODate)), MUTILS_UTF8(MUtils::Version::lib_build_time().toString(Qt::ISODate)));
+
 	//Create application
-	QApplication *application = new QApplication(argc, argv);
+	QScopedPointer<QApplication> application(new QApplication(argc, argv));
 
 	//Create IPC
-	IPC *ipc = new IPC();
+	QScopedPointer<IPC> ipc(new IPC());
 	
 	//Is this the *first* instance?
 	if(ipc->initialize() == 0)
@@ -134,25 +131,16 @@ int mixp_main(int argc, char* argv[])
 		{
 			ipc->sendAsync("?");
 		}
-		MIXP_DELETE_OBJ(ipc);
-		MIXP_DELETE_OBJ(application);
+
 		return 42;
 	}
 
 	//Get temp folder
-	QFile *lockFile = NULL;
-	const QString tempFolder = mixp_getTempFolder(&lockFile);
-	if(tempFolder.isEmpty())
-	{
-		qFatal("Failed to determine TEMP folder!");
-		MIXP_DELETE_OBJ(ipc);
-		return 1;
-	}
-	
+	const QString tempFolder =  MUtils::temp_folder();
 	qDebug("TEMP folder is:\n%s\n", QDir::toNativeSeparators(tempFolder).toUtf8().constData());
 
 	//Create main window
-	CMainWindow *mainWindow = new CMainWindow(tempFolder, ipc);
+	QScopedPointer<CMainWindow> mainWindow(new CMainWindow(tempFolder, ipc.data()));
 	mainWindow->show();
 
 	//Run application
@@ -162,184 +150,14 @@ int mixp_main(int argc, char* argv[])
 	//Stop IPC
 	ipc->stopListening();
 
-	//Clean up
-	MIXP_DELETE_OBJ(mainWindow);
-	MIXP_DELETE_OBJ(application);
-	if(lockFile) lockFile->remove();
-	MIXP_DELETE_OBJ(lockFile);
-	mixp_clean_folder(tempFolder);
-	MIXP_DELETE_OBJ(ipc);
-
 	return exit_code;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Error handlers
-///////////////////////////////////////////////////////////////////////////////
-
-void mixp_fatal_exit(const wchar_t *msg)
-{
-	static volatile long s_lock = 0L;
-	if(_InterlockedExchange(&s_lock, 1L) == 0)
-	{
-		FatalAppExitW(0, msg);
-		TerminateProcess(GetCurrentProcess(), -1);
-	}
-}
-
-LONG WINAPI mixp_exception_handler(__in struct _EXCEPTION_POINTERS *ExceptionInfo)
-{
-	mixp_fatal_exit(L"Unhandeled exception handler invoked, application will exit!");
-	return LONG_MAX;
-}
-
-void mixp_invalid_param_handler(const wchar_t* exp, const wchar_t* fun, const wchar_t* fil, unsigned int, uintptr_t)
-{
-	mixp_fatal_exit(L"Invalid parameter handler invoked, application will exit!");
-}
-
-static void mixp_signal_handler(int signal_num)
-{
-	signal(signal_num, mixp_signal_handler);
-	mixp_fatal_exit(L"Signal handler invoked, application will exit!");
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Message Handler
-///////////////////////////////////////////////////////////////////////////////
-
-static void mixp_console_color(FILE* file, WORD attributes)
-{
-	const HANDLE hConsole = (HANDLE)(_get_osfhandle(_fileno(file)));
-	if((hConsole != NULL) && (hConsole != INVALID_HANDLE_VALUE))
-	{
-		SetConsoleTextAttribute(hConsole, attributes);
-	}
-}
-
-void mixp_message_handler(QtMsgType type, const char *msg)
-{
-	if(g_bHaveConsole)
-	{
-		static const char *GURU_MEDITATION = "\n\nGURU MEDITATION !!!\n\n";
-	
-		static volatile long s_lock = 0L;
-		while(_InterlockedExchange(&s_lock, 1L) != 0) __noop;
-
-		UINT oldOutputCP = GetConsoleOutputCP();
-		if(oldOutputCP != CP_UTF8) SetConsoleOutputCP(CP_UTF8);
-
-		switch(type)
-		{
-		case QtCriticalMsg:
-		case QtFatalMsg:
-			fflush(stdout);
-			fflush(stderr);
-			mixp_console_color(stderr, FOREGROUND_RED | FOREGROUND_INTENSITY);
-			fprintf(stderr, GURU_MEDITATION);
-			fprintf(stderr, "%s\n", msg);
-			fflush(stderr);
-			break;
-		case QtWarningMsg:
-			mixp_console_color(stderr, FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY);
-			fprintf(stderr, "%s\n", msg);
-			fflush(stderr);
-			break;
-		default:
-			mixp_console_color(stderr, FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY);
-			fprintf(stderr, "%s\n", msg);
-			fflush(stderr);
-			break;
-		}
-	
-		mixp_console_color(stderr, FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED);
-		if(oldOutputCP != CP_UTF8) SetConsoleOutputCP(oldOutputCP);
-
-		_InterlockedExchange(&s_lock, 0L);
-	}
-
-	if(type == QtCriticalMsg || type == QtFatalMsg)
-	{
-		mixp_fatal_exit(L"The application has encountered a critical error and will exit now!");
-	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Applicaton entry point
 ///////////////////////////////////////////////////////////////////////////////
 
-static int _main(int argc, char* argv[])
-{
-	if(MIXP_DEBUG)
-	{
-		qInstallMsgHandler(mixp_message_handler);
-		return mixp_main(argc, argv);
-	}
-	else
-	{
-		int iResult = -1;
-		try
-		{
-			qInstallMsgHandler(mixp_message_handler);
-			iResult = mixp_main(argc, argv);
-		}
-		catch(char *error)
-		{
-			fflush(stdout);
-			fflush(stderr);
-			fprintf(stderr, "\nGURU MEDITATION !!!\n\nException error message: %s\n", error);
-			mixp_fatal_exit(L"Unhandeled C++ exception error, application will exit!");
-		}
-		catch(int error)
-		{
-			fflush(stdout);
-			fflush(stderr);
-			fprintf(stderr, "\nGURU MEDITATION !!!\n\nException error code: 0x%X\n", error);
-			mixp_fatal_exit(L"Unhandeled C++ exception error, application will exit!");
-		}
-		catch(...)
-		{
-			fflush(stdout);
-			fflush(stderr);
-			fprintf(stderr, "\nGURU MEDITATION !!!\n");
-			mixp_fatal_exit(L"Unhandeled C++ exception error, application will exit!");
-		}
-		return iResult;
-	}
-}
-
 int main(int argc, char* argv[])
 {
-	if(MIXP_DEBUG)
-	{
-		_mixp_global_init();
-		return _main(argc, argv);
-	}
-	else
-	{
-		__try
-		{
-			SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX);
-			SetUnhandledExceptionFilter(mixp_exception_handler);
-			SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL);
-			_set_invalid_parameter_handler(mixp_invalid_param_handler);
-	
-			static const int signal_num[6] = { SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIGTERM };
-
-			for(size_t i = 0; i < 6; i++)
-			{
-				signal(signal_num[i], mixp_signal_handler);
-			}
-
-			_mixp_global_init();
-			return _main(argc, argv);
-		}
-		__except(1)
-		{
-			fflush(stdout);
-			fflush(stderr);
-			fprintf(stderr, "\nGURU MEDITATION !!!\n\nUnhandeled structured exception error! [code: 0x%X]\n", GetExceptionCode());
-			mixp_fatal_exit(L"Unhandeled structured exception error, application will exit!");
-		}
-	}
+	MUtils::Startup::startup(argc, argv, mixp_main, "MediaInfoXP", false);
 }

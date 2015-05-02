@@ -22,7 +22,13 @@
 #include "MainWindow.h"
 
 //UIC includes
-#include "../tmp/Common/uic/Dialog.h"
+#include "UIC_Dialog.h"
+
+//MUtils
+#include <MUtils/GUI.h>
+#include <MUtils/OSSupport.h>
+#include <MUtils/Sound.h>
+#include <MUtils/Version.h>
 
 //Qt includes
 #include <QMessageBox>
@@ -42,7 +48,6 @@
 
 //Internal
 #include "Config.h"
-#include "Utils.h"
 #include "ShellExtension.h"
 #include "IPC.h"
 
@@ -92,7 +97,7 @@ CMainWindow::CMainWindow(const QString &tempFolder, IPC *const ipc, QWidget *par
 	setMinimumSize(this->size());
 
 	//Setup Icon
-	m_icon = mixp_set_window_icon(this, QIcon(":/res/logo.png"), true);
+	MUtils::GUI::set_window_icon(this, QIcon(":/res/logo.png"), true);
 
 	//Setup links
 	ui->actionLink_MuldeR->setData(QVariant(QString::fromLatin1(LINK_MULDER)));
@@ -145,12 +150,10 @@ CMainWindow::~CMainWindow(void)
 	if(m_mediaInfoHandle)
 	{
 		m_mediaInfoHandle->remove();
-		MIXP_DELETE_OBJ(m_mediaInfoHandle);
+		MUTILS_DELETE(m_mediaInfoHandle);
 	}
-	MIXP_DELETE_OBJ(m_process);
-	MIXP_DELETE_OBJ(m_floatingLabel);
-
-	mixp_free_window_icon(m_icon);
+	MUTILS_DELETE(m_process);
+	MUTILS_DELETE(m_floatingLabel);
 }
 
 ////////////////////////////////////////////////////////////
@@ -163,11 +166,11 @@ void CMainWindow::showEvent(QShowEvent *event)
 	resize(this->minimumSize());
 	
 	//Init test
-	ui->versionLabel->setText(QString("v%1 / v%2 (%3)").arg(QString().sprintf("%u.%02u", mixp_versionMajor, mixp_versionMinor), QString().sprintf("%u.%u.%02u", mixp_miVersionMajor, mixp_miVersionMinor, mixp_miVersionPatch), mixp_get_build_date().toString(Qt::ISODate)));
+	ui->versionLabel->setText(QString("v%1 / v%2 (%3)").arg(QString().sprintf("%u.%02u", mixp_versionMajor, mixp_versionMinor), QString().sprintf("%u.%u.%02u", mixp_miVersionMajor, mixp_miVersionMinor, mixp_miVersionPatch), MUtils::Version::app_build_date().toString(Qt::ISODate)));
 	ui->updateLabel->setText(tr("This version is more than six month old and probably outdated. Please check <a href=\"%1\">%1</a> for updates!").arg(LINK_MULDER));
 
 	//Show update hint?
-	ui->updateLabel->setVisible(mixp_get_build_date().addMonths(6) < mixp_get_current_date());
+	ui->updateLabel->setVisible(MUtils::Version::app_build_date().addMonths(6) < MUtils::OS::current_date());
 
 	//Force resize event
 	resizeEvent(NULL);
@@ -279,7 +282,7 @@ void CMainWindow::keyPressEvent(QKeyEvent *e)
 	{
 		if(m_process && (m_process->state() != QProcess::NotRunning))
 		{
-			mixp_beep(mixp_beep_error);
+			MUtils::Sound::beep(MUtils::Sound::BEEP_ERR);
 			qWarning("Escape pressed, terminated process!");
 			m_process->kill();
 		}
@@ -453,7 +456,7 @@ void CMainWindow::saveButtonClicked(void)
 		{
 			file.write(m_outputLines.join("\r\n").toUtf8());
 			file.close();
-			mixp_beep(mixp_beep_info);
+			MUtils::Sound::beep(MUtils::Sound::BEEP_NFO);
 		}
 		else
 		{
@@ -473,7 +476,7 @@ void CMainWindow::copyToClipboardButtonClicked(void)
 	if(QClipboard *clipboard = QApplication::clipboard())
 	{
 		clipboard->setText(m_outputLines.join("\n"));
-		mixp_beep(mixp_beep_info);
+		MUtils::Sound::beep(MUtils::Sound::BEEP_NFO);
 	}
 }
 
@@ -624,8 +627,8 @@ void CMainWindow::showAboutScreen(void)
 		return;
 	}
 
-	const QDate buildDate = mixp_get_build_date();
-	const QDate curntDate = mixp_get_current_date();
+	const QDate buildDate = MUtils::Version::app_build_date();
+	const QDate curntDate = MUtils::OS::current_date();
 
 	QString text;
 
@@ -685,7 +688,7 @@ void CMainWindow::updateSize(void)
 
 void CMainWindow::fileReceived(const QString &str)
 {
-	mixp_bring_to_front(this);
+	MUtils::GUI::bring_to_front(this);
 
 	if(str.compare("?") != 0)
 	{
@@ -756,7 +759,7 @@ QString CMainWindow::getMediaInfoPath(void)
 			return m_mediaInfoHandle->fileName();
 		}
 		m_mediaInfoHandle->remove();
-		MIXP_DELETE_OBJ(m_mediaInfoHandle);
+		MUTILS_DELETE(m_mediaInfoHandle);
 	}
 
 	//Extract MediaInfo binary now!
@@ -772,20 +775,20 @@ QString CMainWindow::getMediaInfoPath(void)
 			{
 				qWarning("Failed to open MediaInfo binary for reading!\n");
 				m_mediaInfoHandle->remove();
-				MIXP_DELETE_OBJ(m_mediaInfoHandle);
+				MUTILS_DELETE(m_mediaInfoHandle);
 			}
 		}
 		else
 		{
 			qWarning("Failed to write data to MediaInfo binary file!\n");
 			m_mediaInfoHandle->remove();
-			MIXP_DELETE_OBJ(m_mediaInfoHandle);
+			MUTILS_DELETE(m_mediaInfoHandle);
 		}
 	}
 	else
 	{
 		qWarning("Failed to open MediaInfo binary for writing!\n");
-		MIXP_DELETE_OBJ(m_mediaInfoHandle);
+		MUTILS_DELETE(m_mediaInfoHandle);
 	}
 
 	//Validate file content, after it has been extracted
@@ -796,7 +799,7 @@ QString CMainWindow::getMediaInfoPath(void)
 			return m_mediaInfoHandle->fileName();
 		}
 		m_mediaInfoHandle->remove();
-		MIXP_DELETE_OBJ(m_mediaInfoHandle);
+		MUTILS_DELETE(m_mediaInfoHandle);
 	}
 
 	return QString();

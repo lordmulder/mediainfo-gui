@@ -22,8 +22,12 @@
 #pragma once
 
 #include "ShellExtension.h"
-#include "Utils.h"
 
+//MUtils
+#include "MUtils/Registry.h"
+#include "MUtils/OSSupport.h"
+
+//Qt
 #include <QApplication>
 #include <QDir>
 
@@ -33,7 +37,7 @@
 bool ShellExtension::getEnabled(void)
 {
 	quint32 value = 0;
-	if(mixp_reg_value_read(mixp_root_user, MIXP_REGISTRY_KEY, MIXP_REGISTRY_VAL, value))
+	if(MUtils::Registry::reg_value_read(MUtils::Registry::root_user, MIXP_REGISTRY_KEY, MIXP_REGISTRY_VAL, value))
 	{
 		return value;
 	}
@@ -45,34 +49,34 @@ bool ShellExtension::setEnabled(bool enabled)
 	if(enabled)
 	{
 		qDebug("Installing the shell extension...");
-		if(mixp_reg_value_write(mixp_root_user, MIXP_REGISTRY_KEY, QString(), tr("Analyze file with MediaInfoXP")))
+		if(MUtils::Registry::reg_value_write(MUtils::Registry::root_user, MIXP_REGISTRY_KEY, QString(), tr("Analyze file with MediaInfoXP")))
 		{
 			const QString appPath = QDir::toNativeSeparators(QApplication::applicationFilePath());
 			const QString command = QString().sprintf("\"%ls\" --open \"%%1\"", appPath.utf16());
-			if(mixp_reg_value_write(mixp_root_user, MIXP_REGISTRY_KEY"\\command", QString(), command))
+			if(MUtils::Registry::reg_value_write(MUtils::Registry::root_user, MIXP_REGISTRY_KEY"\\command", QString(), command))
 			{
-				if(mixp_reg_value_write(mixp_root_user, MIXP_REGISTRY_KEY, MIXP_REGISTRY_VAL, 1))
+				if(MUtils::Registry::reg_value_write(MUtils::Registry::root_user, MIXP_REGISTRY_KEY, MIXP_REGISTRY_VAL, 1))
 				{
 					qDebug("Success.\n");
-					mixp_shell_change_notification();
+					MUtils::OS::shell_change_notification();
 					return true;
 				}
 			}
 		}
 		qWarning("Failed to install the shell extension!\n");
-		mixp_reg_key_delete(mixp_root_user, MIXP_REGISTRY_KEY);
+		MUtils::Registry::reg_key_delete(MUtils::Registry::root_user, MIXP_REGISTRY_KEY);
 		return false;
 	}
 	else
 	{
 		qDebug("Un-installing the shell extension...");
-		if(!mixp_reg_key_delete(mixp_root_user, MIXP_REGISTRY_KEY))
+		if(!MUtils::Registry::reg_key_delete(MUtils::Registry::root_user, MIXP_REGISTRY_KEY))
 		{
 			qWarning("Failed to un-install the shell extension!\n");
 			return false;
 		}
 		qDebug("Success.\n");
-		mixp_shell_change_notification();
+		MUtils::OS::shell_change_notification();
 		return true;
 	}
 }

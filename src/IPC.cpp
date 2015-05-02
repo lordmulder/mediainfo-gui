@@ -21,8 +21,10 @@
 
 #include "IPC.h"
 
-#include "Utils.h"
+//MUtils
+#include "MUtils/Global.h"
 
+//Qt
 #include <QSharedMemory>
 #include <QSystemSemaphore>
 
@@ -126,10 +128,10 @@ IPC::~IPC(void)
 		m_recvThread->wait();
 	}
 	
-	MIXP_DELETE_OBJ(m_recvThread);
-	MIXP_DELETE_OBJ(m_sharedMemory);
-	MIXP_DELETE_OBJ(m_semaphoreWr);
-	MIXP_DELETE_OBJ(m_semaphoreRd);
+	MUTILS_DELETE(m_recvThread);
+	MUTILS_DELETE(m_sharedMemory);
+	MUTILS_DELETE(m_semaphoreWr);
+	MUTILS_DELETE(m_semaphoreRd);
 }
 
 int IPC::initialize(void)
