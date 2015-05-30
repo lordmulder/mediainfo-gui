@@ -121,7 +121,7 @@ static int mixp_main(int &argc, char **argv)
 
 int main(int argc, char* argv[])
 {
-	MUtils::Startup::startup(argc, argv, mixp_main, "MediaInfoXP", false);
+	MUtils::Startup::startup(argc, argv, mixp_main, "MediaInfoXP", MIXP_DEBUG);
 }
 
 extern "C"
