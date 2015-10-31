@@ -2,11 +2,62 @@
 -------
 + Added
 - Deleted
-x Correction
+x Bug correction
 #number is the identifier of bug report (B), requested feature (F) or patch (P)
 bug reports and feature request are here :
 https://sourceforge.net/p/mediainfo/_list/tickets
 
+Known bugs
+----------
+- Languages (other than english and French) : not all words are translated, I need translators!
+- Others? https://sourceforge.net/p/mediainfo/_list/tickets
+
+
+Version 0.7.78, 2015-10-02
+--------------
++ MOV: AVrp CodecID support
++ Video Stored_Width/Stored_Height and Sampled_Width/Sampled_Height added (hidden by default)
++ Speed optimization for the parsing of tiny files e.g. JPEG files
++ Option (command line / DLL) --Legacy=0 for disabling some legacy fields
++ Option (command line / DLL) --Output=MAXML, XML with MediaInfo and MediaTrace output together, technology preview (not for production)
+x MPEG-TS: Teletext and Teletext Subtitle were missing in the menu list
+x Chroma subsampling "4:4:4" was sometimes indicated for RGB, which is not useful
+
+Version 0.7.77, 2015-09-02
+--------------
++ #B941, MXF: files having only a video stream and an ancillary data stream were having incorrect second video stream
++ MOV: detection of r210 CodecID as raw RGB
++ Ancillary data: detection of all metadata blocks (previously: only the first one was detected)
+x MPEG-TS: Wrong demux of TSP (188+16 TS) files having PES with only padding
+x MediaTrace #2: XML malformed with Flags items (hotfix, flags meaning disabled in XML output)
+x MediaTrace #3: XML malformed with some MP4 files
+x MediaTrace #6: XML duplicated attributes
+x MediaTrace #10: versioned xsd, creating library name and version
+x MediaTrace: XML content was not escaped
+x #B947, Amazon S3 support (REST API v2), CLI/DLL only and if compiled with libcurl support: Analyze file on s3 was not working if secret key contains / character
+
+Version 0.7.76, 2015-08-06
+--------------
++ XML output: line breaks and indents in between attributes for readability
++ Trace feature: XML trace update, only if compiled with trace feature
++ Amazon S3 support (REST API v2), CLI/DLL only and if compiled with libcurl support
++ FFV1: improved slice analysis (currently activated only with trace feature and for 1st frame)
+x MXF: optimization of the parsing, reading a lot less data (e.g. can be reduced from 1 GB to 10 MB with some UHD files)
+x MXF: wrong frame count with files not having the video stream as the first stream
+x Dolby E in MPEG-TS: "SMPTE ST 302" information was accidentally removed
+x MPEG-TS: avoid filling delay from file name, not applicable on MPEG-TS
+x MXF: better handling of huge padding blocks, better handling of descriptors without link to a TrackID
+x IMX: streams claiming that they are IMX are actually pure MPEG Video, probing both IMX and MPEG Video
+
+Version 0.7.75, 2015-06-30
+--------------
++ MXF: consideraing 60 fps timecode tracks with 2 components having a difference of 2 frames as a single timecode
++ EBUCore 1.6: switch to the link of the final XSD
+x XDCAM: some directory structures were wrongly detected as XDCAM structure having a XML file
+x MXF: SDTI 60 fps times were wrong
+x #B927, DPX: date/time specific DPX format was used instead of the ISO-like one
+x #B927, EBUCore: invalid content in attribute startDate 
+x ProRes: streams with apcs CodecID were displayed with an incoherent bit depth instead of no bit depth
 
 Version 0.7.74, 2015-05-25
 --------------
