@@ -410,7 +410,7 @@ void CMainWindow::analyzeNextFile(void)
 		return;
 	}
 
-	qDebug("Process started successfully (PID: %u)", 42); //m_process->pid()->dwProcessId);
+	qDebug("Process started successfully (PID: %u)", MUtils::OS::process_id(m_process.data()));
 }
 
 void CMainWindow::analyzeButtonClicked(void)

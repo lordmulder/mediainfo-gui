@@ -62,7 +62,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)\..\Prerequisites\Qt4\MSVC-2013\Debug\lib;$(SolutionDir)\..\Prerequisites\Qt4\MSVC-2013\Debug\plugins\imageformats;$(SolutionDir)\..\Prerequisites\EncodePointer\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\..\Prerequisites\Qt4\$(PlatformToolset)\Debug\lib;$(SolutionDir)\..\Prerequisites\Qt4\$(PlatformToolset)\Debug\plugins\imageformats;$(SolutionDir)\..\Prerequisites\EncodePointer\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>QtCored4.lib;QtGuid4.lib;QtSvgd4.lib;Winmm.lib;imm32.lib;ws2_32.lib;Shlwapi.lib;Wininet.lib;PowrProf.lib;psapi.lib;Sensapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>mxp_entry_point</EntryPointSymbol>
     </Link>
@@ -94,8 +94,8 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(SolutionDir)\..\Prerequisites\Qt4\MSVC-2013\Static\lib;$(SolutionDir)\..\Prerequisites\Qt4\MSVC-2013\Static\plugins\imageformats;$(SolutionDir)\..\Prerequisites\EncodePointer\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>EncodePointer.lib;QtCore.lib;QtGui.lib;QtSvg.lib;qsvg.lib;qico.lib;qtga.lib;Winmm.lib;imm32.lib;ws2_32.lib;Shlwapi.lib;Wininet.lib;PowrProf.lib;psapi.lib;Sensapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)\..\Prerequisites\Qt4\$(PlatformToolset)\Static\lib;$(SolutionDir)\..\Prerequisites\Qt4\$(PlatformToolset)\Static\plugins\imageformats;$(SolutionDir)\..\Prerequisites\EncodePointer\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>EncodePointer.lib;QtCore.lib;QtGui.lib;QtSvg.lib;qsvg.lib;qico.lib;qtga.lib;Winmm.lib;imm32.lib;ws2_32.lib;Shlwapi.lib;Wininet.lib;PowrProf.lib;psapi.lib;Sensapi.lib;Version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <ShowProgress>LinkVerboseLib</ShowProgress>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
