@@ -27,7 +27,9 @@
 //MUtils
 #include <MUtils/GUI.h>
 #include <MUtils/OSSupport.h>
+#include <MUtils/CPUFeatures.h>
 #include <MUtils/Sound.h>
+#include <MUtils/Hash_Blake2.h>
 #include <MUtils/Version.h>
 
 //Qt includes
@@ -170,7 +172,7 @@ void CMainWindow::showEvent(QShowEvent *event)
 	resize(this->minimumSize());
 	
 	//Init test
-	ui->versionLabel->setText(QString("v%1 / v%2 (%3)").arg(QString().sprintf("%u.%02u", mixp_versionMajor, mixp_versionMinor), QString().sprintf("%u.%u.%02u", mixp_miVersionMajor, mixp_miVersionMinor, mixp_miVersionPatch), MUtils::Version::app_build_date().toString(Qt::ISODate)));
+	ui->versionLabel->setText(QString("v%1 / v%2 (%3)").arg(QString().sprintf("%u.%02u", g_mixp_versionMajor, g_mixp_versionMinor), QString().sprintf("%u.%u.%02u", g_mixp_miVersionMajor, g_mixp_miVersionMinor, g_mixp_miVersionPatch), MUtils::Version::app_build_date().toString(Qt::ISODate)));
 	ui->updateLabel->setText(tr("This version is more than six month old and probably outdated. Please check <a href=\"%1\">%1</a> for updates!").arg(LINK_MULDER));
 
 	//Show update hint?
@@ -629,15 +631,15 @@ void CMainWindow::showAboutScreen(void)
 
 	QString text;
 
-	text += QString().sprintf("<nobr><tt><b>MediaInfoXP v%u.%02u - Simple GUI for MediaInfo</b><br>", mixp_versionMajor, mixp_versionMinor);
+	text += QString().sprintf("<nobr><tt><b>MediaInfoXP v%u.%02u - Simple GUI for MediaInfo</b><br>", g_mixp_versionMajor, g_mixp_versionMinor);
 	text += QString().sprintf("Copyright (c) 2004-%04d LoRd_MuldeR &lt;mulder2@gmx.de&gt;. Some rights reserved.<br>", qMax(buildDate.year(),curntDate.year()));
-	text += QString().sprintf("Built on %s at %s, using Qt Framework v%s.<br><br>", buildDate.toString(Qt::ISODate).toLatin1().constData(), mixp_buildTime, qVersion());
+	text += QString().sprintf("Built on %s at %s, using Qt Framework v%s.<br><br>", buildDate.toString(Qt::ISODate).toLatin1().constData(), g_mixp_buildTime, qVersion());
 	text += QString().sprintf("This program is free software: you can redistribute it and/or modify<br>");
 	text += QString().sprintf("it under the terms of the GNU General Public License &lt;http://www.gnu.org/&gt;.<br>");
 	text += QString().sprintf("Note that this program is distributed with ABSOLUTELY NO WARRANTY.<br><br>");
 	text += QString().sprintf("Please check the web-site at <a href=\"%s\">%s</a> for updates !!!<br>", LINK_MULDER, LINK_MULDER);
 	text += QString().sprintf("<hr><br>");
-	text += QString().sprintf("<b>This application is powered by MediaInfo v%u.%u.%02u</b><br>", mixp_miVersionMajor, mixp_miVersionMinor, mixp_miVersionPatch);
+	text += QString().sprintf("<b>This application is powered by MediaInfo v%u.%u.%02u</b><br>", g_mixp_miVersionMajor, g_mixp_miVersionMinor, g_mixp_miVersionPatch);
 	text += QString().sprintf("Free and OpenSource tool for displaying technical information about media files.<br>");
 	text += QString().sprintf("Copyright (c) 2002-%04d MediaArea.net SARL. All rights reserved.<br><br>", qMax(buildDate.year(),curntDate.year()));
 	text += QString().sprintf("Redistribution and use is permitted according to the (2-Clause) BSD License.<br>");
@@ -718,29 +720,39 @@ void CMainWindow::received(const quint32 &command, const QString &message)
 // PRIVATE FUNCTIONS
 ////////////////////////////////////////////////////////////
 
-static bool VALIDATE_MEDIAINFO(QFile *const handle)
+static bool VALIDATE_MEDIAINFO(QFile *const handle, const char *const expected_checksum)
 {
 	if(!handle->reset())
 	{
 		return false;
 	}
 
-	const QByteArray checksum = QCryptographicHash::hash(handle->readAll(), QCryptographicHash::Sha1);
-	if(qstricmp(checksum.toHex().constData(), mixp_checksum) != 0)
+	//Compute Hash
+	MUtils::Hash::Blake2 hash("+A`~}vPe9'~#n+c1Wq/MPo;1XwY\\;Pb.");
+	hash.update(handle->readAll());
+	const QByteArray checksum = hash.finalize(true);
+
+	//Compare Hash
+	if(qstricmp(checksum.constData(), expected_checksum) != 0)
 	{
 		qWarning("MediaInfo binary is corrupted!");
-		qWarning("Expected checksum: %s", mixp_checksum);
-		qWarning("Computed checksum: %s\n", checksum.toHex().constData());
+		qWarning("Expected checksum: %s", expected_checksum);
+		qWarning("Computed checksum: %s\n", checksum.constData());
 		return false;
 	}
 
-	qDebug("MediaInfo checksum: %s\n", checksum.toHex().constData());
+	qDebug("MediaInfo checksum: %s\n", checksum.constData());
 	return true;
 }
 
 QString CMainWindow::getMediaInfoPath(void)
 {
-	QResource mediaInfoRes(":/res/MediaInfo.i686.exe");
+	//Detect arch
+	const bool have_x64 = MUtils::CPUFetaures::detect().x64;
+	const QString arch = have_x64 ? QLatin1String("x64-sse2") : QLatin1String("x86-i686");
+
+	//Setup resource
+	QResource mediaInfoRes(QString(":/res/MediaInfo.%1.exe").arg(arch));
 	if((!mediaInfoRes.isValid()) || (!mediaInfoRes.data()))
 	{
 		qFatal("MediaInfo resource could not be initialized!");
@@ -750,7 +762,7 @@ QString CMainWindow::getMediaInfoPath(void)
 	//Validate file content, if already extracted
 	if(!m_mediaInfoHandle.isNull())
 	{
-		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data()))
+		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), (have_x64 ? g_mixp_checksum_x64 : g_mixp_checksum_x86)))
 		{
 			return m_mediaInfoHandle->fileName();
 		}
@@ -759,7 +771,7 @@ QString CMainWindow::getMediaInfoPath(void)
 
 	//Extract MediaInfo binary now!
 	qDebug("MediaInfo binary not existing yet, going to extract now...\n");
-	m_mediaInfoHandle.reset(new QFile(QString("%1/MediaInfo_%2.exe").arg(m_tempFolder, QString().sprintf("%04x", qrand() % 0xFFFF))));
+	m_mediaInfoHandle.reset(new QFile(QString("%1/MediaInfo_%2.%3.exe").arg(m_tempFolder, QString().sprintf("%04x", qrand() % 0xFFFF), arch)));
 	if(m_mediaInfoHandle->open(QIODevice::ReadWrite | QIODevice::Truncate))
 	{
 		if(m_mediaInfoHandle->write(reinterpret_cast<const char*>(mediaInfoRes.data()), mediaInfoRes.size()) == mediaInfoRes.size())
@@ -786,7 +798,7 @@ QString CMainWindow::getMediaInfoPath(void)
 	//Validate file content, after it has been extracted
 	if(!m_mediaInfoHandle.isNull())
 	{
-		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data()))
+		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), (have_x64 ? g_mixp_checksum_x64 : g_mixp_checksum_x86)))
 		{
 			return m_mediaInfoHandle->fileName();
 		}

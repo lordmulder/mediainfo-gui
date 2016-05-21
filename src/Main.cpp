@@ -19,6 +19,8 @@
 // http://www.gnu.org/licenses/gpl-2.0.txt
 ///////////////////////////////////////////////////////////////////////////////
 
+#define MIXP_CREATE_CONFIG 1
+
 //MUTils
 #include <MUtils/Startup.h>
 #include <MUtils/IPCChannel.h>
@@ -37,6 +39,7 @@
 	Q_IMPORT_PLUGIN(qtga)
 #endif
 
+//Internal
 #include "Config.h"
 #include "MainWindow.h"
 #include "IPC.h"
@@ -74,8 +77,8 @@ static void mixp_handle_multi_instance(MUtils::IPCChannel *const ipcChannel)
 static int mixp_main(int &argc, char **argv)
 {
 	//Print the logo
-	qDebug("MediaInfoXP v%u.%02u, built on %s at %s.", mixp_versionMajor, mixp_versionMinor, mixp_buildDate, mixp_buildTime);
-	qDebug("Copyright (c) 2004-%s LoRd_MuldeR <mulder2@gmx.de>. Some rights reserved.", &mixp_buildDate[7]);
+	qDebug("MediaInfoXP v%u.%02u, built on %s at %s.", g_mixp_versionMajor, g_mixp_versionMinor, g_mixp_buildDate, g_mixp_buildTime);
+	qDebug("Copyright (c) 2004-%s LoRd_MuldeR <mulder2@gmx.de>. Some rights reserved.", &g_mixp_buildDate[7]);
 	qDebug("Built with Qt v%s, running with Qt v%s.\n", QT_VERSION_STR, qVersion());
 
 	//Print library version
@@ -85,7 +88,7 @@ static int mixp_main(int &argc, char **argv)
 	QScopedPointer<QApplication> application(new QApplication(argc, argv));
 
 	//Create IPC
-	QScopedPointer<MUtils::IPCChannel> ipcChannel(new MUtils::IPCChannel("mediainfo-xp", qHash(QString("%0@%1").arg(QString::fromLatin1(mixp_buildDate), QString::fromLatin1(mixp_buildTime))), "instance"));
+	QScopedPointer<MUtils::IPCChannel> ipcChannel(new MUtils::IPCChannel("mediainfo-xp", qHash(QString("%0@%1").arg(QString::fromLatin1(g_mixp_buildDate), QString::fromLatin1(g_mixp_buildTime))), "instance"));
 	const int ipcMode = ipcChannel->initialize();
 	if((ipcMode != MUtils::IPCChannel::RET_SUCCESS_MASTER) && (ipcMode != MUtils::IPCChannel::RET_SUCCESS_SLAVE))
 	{
