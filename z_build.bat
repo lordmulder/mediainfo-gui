@@ -76,8 +76,9 @@ set "PACK_PATH=%TMP%\~%RANDOM%%RANDOM%.tmp"
 mkdir "%PACK_PATH%"
 copy "%~dp0\bin\Win32\Release_Static\*.exe" "%PACK_PATH%"
 copy "%~dp0\Copying.txt" "%PACK_PATH%"
-copy "%~dp0\doc\*.txt" "%PACK_PATH%"
-copy "%~dp0\doc\*.html" "%PACK_PATH%"
+copy "%~dp0\doc\*.txt"   "%PACK_PATH%"
+copy "%~dp0\doc\*.html"  "%PACK_PATH%"
+copy "%~dp0\doc\*.svg"   "%PACK_PATH%"
 
 REM ///////////////////////////////////////////////////////////////////////////
 REM // Compress
@@ -90,6 +91,7 @@ REM ///////////////////////////////////////////////////////////////////////////
 attrib +R "%PACK_PATH%\*.exe"
 attrib +R "%PACK_PATH%\*.html"
 attrib +R "%PACK_PATH%\*.txt"
+attrib +R "%PACK_PATH%\*.svg"
 
 REM ///////////////////////////////////////////////////////////////////////////
 REM // Generate outfile name
