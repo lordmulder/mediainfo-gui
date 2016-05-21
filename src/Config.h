@@ -19,21 +19,28 @@
 // http://www.gnu.org/licenses/gpl-2.0.txt
 ///////////////////////////////////////////////////////////////////////////////
 
+#ifdef MIXP_CREATE_CONFIG
+#define MIXP_DEFINE_CONF(X,Y,Z) extern const X g_##Y = Z;
+#else
+#define MIXP_DEFINE_CONF(X,Y,Z) extern const X g_##Y;
+#endif
+
 //Version
-static unsigned int mixp_versionMajor = 2;
-static unsigned int mixp_versionMinor = 19;
+MIXP_DEFINE_CONF(unsigned int, mixp_versionMajor,   2)
+MIXP_DEFINE_CONF(unsigned int, mixp_versionMinor,  20)
 
 //MediaInfo Version
-static unsigned int mixp_miVersionMajor = 0;
-static unsigned int mixp_miVersionMinor = 7;
-static unsigned int mixp_miVersionPatch = 82;
+MIXP_DEFINE_CONF(unsigned int, mixp_miVersionMajor,  0)
+MIXP_DEFINE_CONF(unsigned int, mixp_miVersionMinor,  7)
+MIXP_DEFINE_CONF(unsigned int, mixp_miVersionPatch, 85)
 
 //MediaInfo Checksum
-static const char *mixp_checksum = "66621399c4bfdaf5e526860fc45ce71e4e3f80d3";
+MIXP_DEFINE_CONF(char*, mixp_checksum_x86, "b5a8498b6e1f1c9c936d17e5ced250b6aceca92010f224eccef8e211207f205b056c9b9982c2ed3b176c6b723a10f91c24803f9087cc75c829a97b3adb27d58b")
+MIXP_DEFINE_CONF(char*, mixp_checksum_x64, "1bce101bc88b874de57da929657a17a43785da777a0a77c95e8b5ec24c9c1f25db58ec1e53bcb9476c537f455c7eafeb0ac61b3b8d1d271157afb2633c54764f")
 
 //Build date
-static const char *mixp_buildDate = __DATE__;
-static const char *mixp_buildTime = __TIME__;
+MIXP_DEFINE_CONF(char*, mixp_buildDate, __DATE__)
+MIXP_DEFINE_CONF(char*, mixp_buildTime, __TIME__)
 
 //Show console
 #define MIXP_CONSOLE (0)
@@ -44,3 +51,6 @@ static const char *mixp_buildTime = __TIME__;
 #else
 	#define MIXP_DEBUG (0)
 #endif
+
+//Undefine
+#undef MIXP_DEFINE_CONF
