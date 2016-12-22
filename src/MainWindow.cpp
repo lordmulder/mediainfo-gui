@@ -720,6 +720,8 @@ void CMainWindow::received(const quint32 &command, const QString &message)
 // PRIVATE FUNCTIONS
 ////////////////////////////////////////////////////////////
 
+#define HAVE_SSE2(X) ((X).features & MUtils::CPUFetaures::FLAG_SSE2)
+
 static bool VALIDATE_MEDIAINFO(QFile *const handle, const char *const expected_checksum)
 {
 	if(!handle->reset())
@@ -748,11 +750,12 @@ static bool VALIDATE_MEDIAINFO(QFile *const handle, const char *const expected_c
 QString CMainWindow::getMediaInfoPath(void)
 {
 	//Detect arch
-	const bool have_x64 = MUtils::CPUFetaures::detect().x64;
-	const QString arch = have_x64 ? QLatin1String("x64-sse2") : QLatin1String("x86-i686");
+	const MUtils::CPUFetaures::cpu_info_t cpu_features = MUtils::CPUFetaures::detect();
+	const QString arch = cpu_features.x64 ? QLatin1String("x64-sse2") : (HAVE_SSE2(cpu_features) ? QLatin1String("x86-sse2") : QLatin1String("x86-i686"));
+	const char *const checksum = cpu_features.x64 ? g_mixp_checksum_x64 : (HAVE_SSE2(cpu_features) ? g_mixp_checksum_sse : g_mixp_checksum_gen);
 
 	//Setup resource
-	QResource mediaInfoRes(QString(":/res/MediaInfo.%1.exe").arg(arch));
+	QResource mediaInfoRes(QString(":/res/bin/MediaInfo.%1.exe").arg(arch));
 	if((!mediaInfoRes.isValid()) || (!mediaInfoRes.data()))
 	{
 		qFatal("MediaInfo resource could not be initialized!");
@@ -762,7 +765,7 @@ QString CMainWindow::getMediaInfoPath(void)
 	//Validate file content, if already extracted
 	if(!m_mediaInfoHandle.isNull())
 	{
-		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), (have_x64 ? g_mixp_checksum_x64 : g_mixp_checksum_x86)))
+		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), checksum))
 		{
 			return m_mediaInfoHandle->fileName();
 		}
@@ -771,34 +774,42 @@ QString CMainWindow::getMediaInfoPath(void)
 
 	//Extract MediaInfo binary now!
 	qDebug("MediaInfo binary not existing yet, going to extract now...\n");
-	m_mediaInfoHandle.reset(new QFile(QString("%1/MediaInfo_%2.%3.exe").arg(m_tempFolder, QString().sprintf("%04x", qrand() % 0xFFFF), arch)));
-	if(m_mediaInfoHandle->open(QIODevice::ReadWrite | QIODevice::Truncate))
+	const QString filePath = MUtils::make_unique_file(m_tempFolder, "MediaInfo", arch + QLatin1String(".exe"));
+	if (!filePath.isEmpty())
 	{
-		if(m_mediaInfoHandle->write(reinterpret_cast<const char*>(mediaInfoRes.data()), mediaInfoRes.size()) == mediaInfoRes.size())
+		m_mediaInfoHandle.reset(new QFile(filePath));
+		if (m_mediaInfoHandle->open(QIODevice::ReadWrite | QIODevice::Truncate))
 		{
-			qDebug("MediaInfo path is:\n%s\n", m_mediaInfoHandle->fileName().toUtf8().constData());
-			m_mediaInfoHandle->close();
-			if(!m_mediaInfoHandle->open(QIODevice::ReadOnly))
+			if (m_mediaInfoHandle->write(reinterpret_cast<const char*>(mediaInfoRes.data()), mediaInfoRes.size()) == mediaInfoRes.size())
 			{
-				qWarning("Failed to open MediaInfo binary for reading!\n");
+				qDebug("MediaInfo path is:\n%s\n", m_mediaInfoHandle->fileName().toUtf8().constData());
+				m_mediaInfoHandle->close();
+				if (!m_mediaInfoHandle->open(QIODevice::ReadOnly))
+				{
+					qWarning("Failed to open MediaInfo binary for reading!\n");
+					m_mediaInfoHandle->remove();
+				}
+			}
+			else
+			{
+				qWarning("Failed to write data to MediaInfo binary file!\n");
 				m_mediaInfoHandle->remove();
 			}
 		}
 		else
 		{
-			qWarning("Failed to write data to MediaInfo binary file!\n");
-			m_mediaInfoHandle->remove();
+			qWarning("Failed to open MediaInfo binary for writing!\n");
 		}
 	}
 	else
 	{
-		qWarning("Failed to open MediaInfo binary for writing!\n");
+		qWarning("Failed to gemerate MediaInfo outout path!\n");
 	}
 
 	//Validate file content, after it has been extracted
 	if(!m_mediaInfoHandle.isNull())
 	{
-		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), (have_x64 ? g_mixp_checksum_x64 : g_mixp_checksum_x86)))
+		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), checksum))
 		{
 			return m_mediaInfoHandle->fileName();
 		}

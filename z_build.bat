@@ -3,13 +3,10 @@ REM ///////////////////////////////////////////////////////////////////////////
 REM // Set Paths
 REM ///////////////////////////////////////////////////////////////////////////
 set "MSVC_PATH=C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC"
-set "QTVC_PATH=C:\Qt\4.8.7"
-set "UPX3_PATH=C:\Program Files (x86)\UPX"
 
 REM ###############################################
 REM # DO NOT MODIFY ANY LINES BELOW THIS LINE !!! #
 REM ###############################################
-
 
 REM ///////////////////////////////////////////////////////////////////////////
 REM // Setup environment
@@ -34,7 +31,11 @@ if not exist "%VCINSTALLDIR%\bin\cl.exe" (
 	goto BuildError
 )
 if not exist "%QTDIR%\bin\moc.exe" (
-	echo Qt meta compiler not found. Please check your QTVC_PATH var!
+	echo Qt meta compiler not found. Please check your QTDIR var!
+	goto BuildError
+)
+if not exist "%QTDIR%\include\QtCore\qglobal.h" (
+	echo %%QTDIR%% header files not found. Please check your QTDIR var!
 	goto BuildError
 )
 
@@ -43,11 +44,11 @@ REM // Get current date and time (in ISO format)
 REM ///////////////////////////////////////////////////////////////////////////
 set "ISO_DATE="
 set "ISO_TIME="
-if not exist "%~dp0\etc\date.exe" BuildError
-for /F "tokens=1,2 delims=:" %%a in ('"%~dp0\etc\date.exe" +ISODATE:%%Y-%%m-%%d') do (
+if not exist "%~dp0\..\Prerequisites\GnuWin32\date.exe" BuildError
+for /F "tokens=1,2 delims=:" %%a in ('"%~dp0\..\Prerequisites\GnuWin32\date.exe" +ISODATE:%%Y-%%m-%%d') do (
 	if "%%a"=="ISODATE" set "ISO_DATE=%%b"
 )
-for /F "tokens=1,2,3,4 delims=:" %%a in ('"%~dp0\etc\date.exe" +ISOTIME:%%T') do (
+for /F "tokens=1,2,3,4 delims=:" %%a in ('"%~dp0\..\Prerequisites\GnuWin32\date.exe" +ISOTIME:%%T') do (
 	if "%%a"=="ISOTIME" set "ISO_TIME=%%b:%%c:%%d"
 )
 if "%ISO_DATE%"=="" goto BuildError
@@ -83,7 +84,7 @@ copy "%~dp0\doc\*.svg"   "%PACK_PATH%"
 REM ///////////////////////////////////////////////////////////////////////////
 REM // Compress
 REM ///////////////////////////////////////////////////////////////////////////
-"%UPX3_PATH%\upx.exe" --best  "%PACK_PATH%\*.exe"
+"%~dp0\..\Prerequisites\UPX\upx.exe" --best  "%PACK_PATH%\*.exe"
 
 REM ///////////////////////////////////////////////////////////////////////////
 REM // Attributes
@@ -127,7 +128,7 @@ REM ///////////////////////////////////////////////////////////////////////////
 REM // Build the package
 REM ///////////////////////////////////////////////////////////////////////////
 pushd "%PACK_PATH%
-"%~dp0\etc\zip.exe" -9 -r -z "%~dp0\out\%OUT_NAME%.zip" "*.*" < "%~dp0\out\%OUT_NAME%.txt"
+"%~dp0\..\Prerequisites\GnuWin32\zip.exe" -9 -r -z "%~dp0\out\%OUT_NAME%.zip" "*.*" < "%~dp0\out\%OUT_NAME%.txt"
 popd
 rmdir /Q /S "%PACK_PATH%"
 attrib +R "%~dp0\out\%OUT_NAME%.zip"
