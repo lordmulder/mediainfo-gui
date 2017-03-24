@@ -101,6 +101,9 @@ CMainWindow::CMainWindow(const QString &tempFolder, MUtils::IPCChannel *const ip
 	//Setup Icon
 	MUtils::GUI::set_window_icon(this, QIcon(":/res/logo.png"), true);
 
+	//Adjust size to DPI settings and re-center
+	MUtils::GUI::scale_widget(this);
+
 	//Setup links
 	ui->actionLink_MuldeR   ->setData(QVariant(QString::fromLatin1(LINK_MULDER)));
 	ui->actionLink_MediaInfo->setData(QVariant(QString::fromLatin1(LINK_MEDIAINFO)));
@@ -169,7 +172,6 @@ CMainWindow::~CMainWindow(void)
 void CMainWindow::showEvent(QShowEvent *event)
 {
 	QMainWindow::showEvent(event);
-	resize(this->minimumSize());
 	
 	//Init test
 	ui->versionLabel->setText(QString("v%1 / v%2 (%3)").arg(QString().sprintf("%u.%02u", g_mixp_versionMajor, g_mixp_versionMinor), QString().sprintf("%u.%u.%02u", g_mixp_miVersionMajor, g_mixp_miVersionMinor, g_mixp_miVersionPatch), MUtils::Version::app_build_date().toString(Qt::ISODate)));
