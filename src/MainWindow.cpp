@@ -29,7 +29,7 @@
 #include <MUtils/OSSupport.h>
 #include <MUtils/CPUFeatures.h>
 #include <MUtils/Sound.h>
-#include <MUtils/Hash_Blake2.h>
+#include <MUtils/Hash.h>
 #include <MUtils/Version.h>
 
 //Qt includes
@@ -721,6 +721,7 @@ void CMainWindow::received(const quint32 &command, const QString &message)
 ////////////////////////////////////////////////////////////
 
 #define HAVE_SSE2(X) ((X).features & MUtils::CPUFetaures::FLAG_SSE2)
+static const char *const HASH_SEED = "+A`~}vPe9'~#n+c1Wq/MPo;1XwY\\;Pb.";
 
 static bool VALIDATE_MEDIAINFO(QFile *const handle, const char *const expected_checksum)
 {
@@ -730,9 +731,9 @@ static bool VALIDATE_MEDIAINFO(QFile *const handle, const char *const expected_c
 	}
 
 	//Compute Hash
-	MUtils::Hash::Blake2 hash("+A`~}vPe9'~#n+c1Wq/MPo;1XwY\\;Pb.");
-	hash.update(handle->readAll());
-	const QByteArray checksum = hash.finalize(true);
+	QScopedPointer<MUtils::Hash::Hash> hash(MUtils::Hash::create(MUtils::Hash::HASH_BLAKE2_512, HASH_SEED));
+	hash->update(handle->readAll());
+	const QByteArray checksum = hash->digest(true);
 
 	//Compare Hash
 	if(qstricmp(checksum.constData(), expected_checksum) != 0)
