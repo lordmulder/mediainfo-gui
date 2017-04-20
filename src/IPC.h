@@ -41,7 +41,7 @@ public:
 	virtual void run(void);
 
 private:
-	volatile bool m_result;
+	QAtomicInt m_result;
 	MUtils::IPCChannel *const m_ipc;
 	const quint32 m_command;
 	const QString m_message;
@@ -63,7 +63,7 @@ signals:
 
 private:
 	void receiveLoop(void);
-	volatile bool m_stopped;
+	QAtomicInt m_stopped;
 	MUtils::IPCChannel *const m_ipc;
 };
 

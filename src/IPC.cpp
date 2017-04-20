@@ -53,19 +53,18 @@ IPCSendThread::IPCSendThread(MUtils::IPCChannel *const ipc, const quint32 &comma
 :
 	m_ipc(ipc), m_command(command), m_message(message)
 {
-	m_result = false;
 }
 
 void IPCSendThread::run(void)
 {
 	try
 	{
-		m_result = m_ipc->send(m_command, 0, QStringList() << m_message);
+		m_result.fetchAndStoreOrdered(m_ipc->send(m_command, 0, QStringList() << m_message) ? 1 : 0);
 	}
 	catch(...)
 	{
 		qWarning("Exception in IPC receive thread!");
-		m_result = false;
+		m_result.fetchAndStoreOrdered(0);
 	}
 }
 
@@ -78,7 +77,6 @@ IPCReceiveThread::IPCReceiveThread(MUtils::IPCChannel *const ipc)
 :
 	m_ipc(ipc)
 {
-	m_stopped = false;
 }
 	
 void IPCReceiveThread::run(void)
@@ -111,9 +109,8 @@ void IPCReceiveThread::receiveLoop(void)
 
 void IPCReceiveThread::stop(void)
 {
-	if(!m_stopped)
+	if(m_stopped.testAndSetOrdered(0, 1))
 	{
-		m_stopped = true;
 		IPC::sendAsync(m_ipc, IPC::COMMAND_NONE, "exit");
 	}
 }
