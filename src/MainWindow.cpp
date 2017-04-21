@@ -528,6 +528,13 @@ void CMainWindow::processFinished(void)
 		m_outputLines.takeLast();
 	}
 
+	//Remove leading "E:" lines
+	while ((!m_outputLines.isEmpty()) && m_outputLines.first().trimmed().startsWith(QLatin1String("E: ")))
+	{
+		qWarning("E: line has been removed!");
+		m_outputLines.takeFirst();
+	}
+
 	//Failed?
 	if(m_outputLines.empty())
 	{
