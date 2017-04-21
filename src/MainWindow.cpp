@@ -30,6 +30,7 @@
 #include <MUtils/CPUFeatures.h>
 #include <MUtils/Sound.h>
 #include <MUtils/Hash.h>
+#include <MUtils/Exception.h>
 #include <MUtils/Version.h>
 
 //Qt includes
@@ -76,6 +77,22 @@ static QList<QPair<const QString, const QString>> HTML_ESCAPE(void)
 	htmlEscape << QPair<const QString, const QString>("&", "&amp;");
 	return htmlEscape;
 }
+
+//MediaInfo
+static const struct
+{
+	const char *const arch;
+	const char *const checksum;
+	const bool require_x64;
+	const bool require_sse2;
+}
+MEDIAINFO_BIN[] =
+{
+	{ "x64-sse2", g_mixp_checksum_x64, bool(1), bool(1) },
+	{ "x86-sse2", g_mixp_checksum_sse, bool(0), bool(1) },
+	{ "x86-i686", g_mixp_checksum_gen, bool(0), bool(0) },
+	{ NULL, NULL, false, false }
+};
 
 //Const
 static const int FILE_RECEIVE_DELAY = 1750;
@@ -140,6 +157,12 @@ CMainWindow::CMainWindow(const QString &tempFolder, MUtils::IPCChannel *const ip
 
 	//Randomize
 	qsrand((uint) time(NULL));
+
+	//Selftest
+	if (MUTILS_DEBUG)
+	{
+		selfTest();
+	}
 }
 
 ////////////////////////////////////////////////////////////
@@ -757,15 +780,55 @@ static bool VALIDATE_MEDIAINFO(QFile *const handle, const char *const expected_c
 	return true;
 }
 
+QPair<QString, const char*> CMainWindow::getMediaInfoArch(void)
+{
+	const MUtils::CPUFetaures::cpu_info_t cpu_features = MUtils::CPUFetaures::detect();
+	for (size_t i = 0; MEDIAINFO_BIN[i].arch; ++i)
+	{
+		if (cpu_features.x64 || (!MEDIAINFO_BIN[i].require_x64))
+		{
+			if (HAVE_SSE2(cpu_features) || (!MEDIAINFO_BIN[i].require_sse2))
+			{
+				return qMakePair(QString::fromLatin1(MEDIAINFO_BIN[i].arch), MEDIAINFO_BIN[i].checksum);
+			}
+		}
+	}
+	MUTILS_THROW("This is not supposed to happen!");
+}
+
+void CMainWindow::selfTest(void)
+{
+	qWarning("[Self-Test]");
+	for (size_t i = 0; MEDIAINFO_BIN[i].arch; ++i)
+	{
+		qWarning("%s: %s", MEDIAINFO_BIN[i].arch, MEDIAINFO_BIN[i].checksum);
+		const QResource mediaInfoRes(QString(":/res/bin/MediaInfo.%1.exe").arg(QString::fromLatin1(MEDIAINFO_BIN[i].arch)));
+		if (mediaInfoRes.isValid())
+		{
+			QScopedPointer<MUtils::Hash::Hash> hash(MUtils::Hash::create(MUtils::Hash::HASH_BLAKE2_512, HASH_SEED));
+			hash->update(mediaInfoRes.data(), mediaInfoRes.size());
+			const QByteArray checksum = hash->digest(true);
+			if (qstricmp(MEDIAINFO_BIN[i].checksum, checksum.constData()) != 0)
+			{
+				qWarning("\nComputed checksum: %s\n", checksum.constData());
+				qFatal("MediaInfo checksum mismatch detected!");
+			}
+		}
+		else
+		{
+			qFatal("MediaInfo resource could not be found!");
+		}
+	}
+	qWarning("Success.\n");
+}
+
 QString CMainWindow::getMediaInfoPath(void)
 {
-	//Detect arch
-	const MUtils::CPUFetaures::cpu_info_t cpu_features = MUtils::CPUFetaures::detect();
-	const QString arch = cpu_features.x64 ? QLatin1String("x64-sse2") : (HAVE_SSE2(cpu_features) ? QLatin1String("x86-sse2") : QLatin1String("x86-i686"));
-	const char *const checksum = cpu_features.x64 ? g_mixp_checksum_x64 : (HAVE_SSE2(cpu_features) ? g_mixp_checksum_sse : g_mixp_checksum_gen);
+	//Detect MediaInfo arch
+	const QPair<QString, const char*> arch = getMediaInfoArch();
 
 	//Setup resource
-	QResource mediaInfoRes(QString(":/res/bin/MediaInfo.%1.exe").arg(arch));
+	const QResource mediaInfoRes(QString(":/res/bin/MediaInfo.%1.exe").arg(arch.first));
 	if((!mediaInfoRes.isValid()) || (!mediaInfoRes.data()))
 	{
 		qFatal("MediaInfo resource could not be initialized!");
@@ -775,7 +838,7 @@ QString CMainWindow::getMediaInfoPath(void)
 	//Validate file content, if already extracted
 	if(!m_mediaInfoHandle.isNull())
 	{
-		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), checksum))
+		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), arch.second))
 		{
 			return m_mediaInfoHandle->fileName();
 		}
@@ -784,7 +847,7 @@ QString CMainWindow::getMediaInfoPath(void)
 
 	//Extract MediaInfo binary now!
 	qDebug("MediaInfo binary not existing yet, going to extract now...\n");
-	const QString filePath = MUtils::make_unique_file(m_tempFolder, "MediaInfo", arch + QLatin1String(".exe"));
+	const QString filePath = MUtils::make_unique_file(m_tempFolder, "MediaInfo", arch.first + QLatin1String(".exe"));
 	if (!filePath.isEmpty())
 	{
 		m_mediaInfoHandle.reset(new QFile(filePath));
@@ -819,7 +882,7 @@ QString CMainWindow::getMediaInfoPath(void)
 	//Validate file content, after it has been extracted
 	if(!m_mediaInfoHandle.isNull())
 	{
-		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), checksum))
+		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), arch.second))
 		{
 			return m_mediaInfoHandle->fileName();
 		}

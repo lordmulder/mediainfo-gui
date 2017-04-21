@@ -98,6 +98,8 @@ private:
 
 	const QList<QPair<const QString, const QString>> m_htmlEscape;
 
+	QPair<QString, const char*> getMediaInfoArch(void);
+	void selfTest(void);
 	QString getMediaInfoPath(void);
 	void escapeHtmlChars(QStringList &strings);
 };
