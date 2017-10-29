@@ -2,7 +2,7 @@
 REM ///////////////////////////////////////////////////////////////////////////
 REM // Set Paths
 REM ///////////////////////////////////////////////////////////////////////////
-set "MSVC_PATH=C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC"
+set "MSVC_PATH=C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build"
 
 REM ###############################################
 REM # DO NOT MODIFY ANY LINES BELOW THIS LINE !!! #
@@ -26,7 +26,7 @@ if "%QTDIR%"=="" (
 	echo %%QTDIR%% not specified. Please check your MSVC_PATH var!
 	goto BuildError
 )
-if not exist "%VCINSTALLDIR%\bin\cl.exe" (
+if not exist "%VCToolsInstallDir%\bin\HostX86\x86\cl.exe" (
 	echo C++ compiler not found. Please check your MSVC_PATH var!
 	goto BuildError
 )
@@ -60,11 +60,11 @@ REM ///////////////////////////////////////////////////////////////////////////
 echo ---------------------------------------------------------------------
 echo BEGIN BUILD
 echo ---------------------------------------------------------------------
-MSBuild.exe /property:Configuration=release_static /target:clean   "%~dp0\MediaInfoXP.sln"
+MSBuild.exe /property:Configuration=release_static /property:Platform=Win32 /target:clean   "%~dp0\MediaInfoXP.sln"
 if not "%ERRORLEVEL%"=="0" goto BuildError
-MSBuild.exe /property:Configuration=release_static /target:rebuild "%~dp0\MediaInfoXP.sln"
+MSBuild.exe /property:Configuration=release_static /property:Platform=Win32 /target:rebuild "%~dp0\MediaInfoXP.sln"
 if not "%ERRORLEVEL%"=="0" goto BuildError
-MSBuild.exe /property:Configuration=release_static /target:build   "%~dp0\MediaInfoXP.sln"
+MSBuild.exe /property:Configuration=release_static /property:Platform=Win32 /target:build   "%~dp0\MediaInfoXP.sln"
 if not "%ERRORLEVEL%"=="0" goto BuildError
 
 REM ///////////////////////////////////////////////////////////////////////////
