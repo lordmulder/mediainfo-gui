@@ -30,14 +30,13 @@ MIXP_DEFINE_CONF(unsigned int, mixp_versionMajor,   2)
 MIXP_DEFINE_CONF(unsigned int, mixp_versionMinor,  28)
 
 //MediaInfo Version
-MIXP_DEFINE_CONF(unsigned int, mixp_miVersionMajor,  0)
-MIXP_DEFINE_CONF(unsigned int, mixp_miVersionMinor,  7)
-MIXP_DEFINE_CONF(unsigned int, mixp_miVersionPatch, 99)
+MIXP_DEFINE_CONF(unsigned int, mixp_mediaInfoVeMajor, 17)
+MIXP_DEFINE_CONF(unsigned int, mixp_mediaInfoVeMinor, 10)
 
 //MediaInfo Checksum
-MIXP_DEFINE_CONF(char*, mixp_checksum_gen, "334e0d42a0b75112b148b18a7cddf00e852d2f12e2bd0d03712a567edde8774565ffd1d2419720e91d17a876d57190db25c54fd8b19b6e054f3f8473d1cfa024")
-MIXP_DEFINE_CONF(char*, mixp_checksum_sse, "c3f4db89a676f5543bee81059c346271b5802aa7744b34ea16c25fc32fd7f9cbdbb98e5b680a4467b15b136570265f16401de89ab11e658bd2ccc12a68e9929e")
-MIXP_DEFINE_CONF(char*, mixp_checksum_x64, "6a8f61afa27cc24b3de3bb00cbd237c3571c2b6fa341a1421f8132abd3267b7f8976d47d3601067fa2313983b1efe4d0d281b17008f411e17d4aa8bd8589e889")
+MIXP_DEFINE_CONF(char*, mixp_checksum_gen, "4c8966ae7ce9d4253543a8e818b01433cd149bb8f95c4a7b9a38dbc1c73f1f9cc45ea0416c10970c3b9daaa16ae1eca66a27fd7cec8bc5c5850f1f867a77098a")
+MIXP_DEFINE_CONF(char*, mixp_checksum_sse, "d5f6dd2584e75c24634ea776fd8d2dc832e945cd1540da82cdd5c10fa9056be602db479324ededdcdee09f81adb2303a4525f9b023ac4a5a1e6a0dfa63aed653")
+MIXP_DEFINE_CONF(char*, mixp_checksum_x64, "585162315280540b8faff9f34dc610ad3a25c8ac9415656b02454cabb7c1e5593fcc2309df2dd485c7cd99393b30ca846fe59dedeed951ee5340a106fcc970e2")
 
 //Build date
 MIXP_DEFINE_CONF(char*, mixp_buildDate, __DATE__)

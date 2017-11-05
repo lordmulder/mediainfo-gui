@@ -190,7 +190,7 @@ void CMainWindow::showEvent(QShowEvent *event)
 	QMainWindow::showEvent(event);
 	
 	//Init test
-	ui->versionLabel->setText(QString("v%1 / v%2 (%3)").arg(QString().sprintf("%u.%02u", g_mixp_versionMajor, g_mixp_versionMinor), QString().sprintf("%u.%u.%02u", g_mixp_miVersionMajor, g_mixp_miVersionMinor, g_mixp_miVersionPatch), MUtils::Version::app_build_date().toString(Qt::ISODate)));
+	ui->versionLabel->setText(QString("v%1 / v%2 (%3)").arg(QString().sprintf("%u.%02u", g_mixp_versionMajor, g_mixp_versionMinor), QString().sprintf("%u.%02u", g_mixp_mediaInfoVeMajor, g_mixp_mediaInfoVeMinor), MUtils::Version::app_build_date().toString(Qt::ISODate)));
 	ui->updateLabel->setText(tr("This version is more than six month old and probably outdated. Please check <a href=\"%1\">%1</a> for updates!").arg(LINK_MULDER));
 
 	//Show update hint?
@@ -673,7 +673,7 @@ void CMainWindow::showAboutScreen(void)
 	text += QString().sprintf("Note that this program is distributed with ABSOLUTELY NO WARRANTY.<br><br>");
 	text += QString().sprintf("Please check the web-site at <a href=\"%s\">%s</a> for updates !!!<br>", LINK_MULDER, LINK_MULDER);
 	text += QString().sprintf("<hr><br>");
-	text += QString().sprintf("<b>This application is powered by MediaInfo v%u.%u.%02u</b><br>", g_mixp_miVersionMajor, g_mixp_miVersionMinor, g_mixp_miVersionPatch);
+	text += QString().sprintf("<b>This application is powered by MediaInfo v%u.%02u</b><br>", g_mixp_mediaInfoVeMajor, g_mixp_mediaInfoVeMinor);
 	text += QString().sprintf("Free and OpenSource tool for displaying technical information about media files.<br>");
 	text += QString().sprintf("Copyright (c) 2002-%04d MediaArea.net SARL. All rights reserved.<br><br>", qMax(buildDate.year(),curntDate.year()));
 	text += QString().sprintf("Redistribution and use is permitted according to the (2-Clause) BSD License.<br>");
