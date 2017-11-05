@@ -62,6 +62,7 @@ private slots:
 	void initShellExtension(void);
 	void updateShellExtension(bool checked);
 	void updateLineWrapping(bool checked);
+	void toggleOutputOption(bool checked);
 	void received(const quint32 &command, const QString &message);
 
 protected:
@@ -96,10 +97,10 @@ private:
 	QStringList m_pendingFiles;
 	QStringList m_outputLines;
 
-	const QList<QPair<const QString, const QString>> m_htmlEscape;
-
 	QPair<QString, const char*> getMediaInfoArch(void);
 	void selfTest(void);
 	QString getMediaInfoPath(void);
-	void escapeHtmlChars(QStringList &strings);
+
+	static QStringList escapeHtmlLines(const QStringList &strings);
+	static QString reformatXml(const QString &input);
 };

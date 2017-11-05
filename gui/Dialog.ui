@@ -241,6 +241,7 @@
      <addaction name="actionShellExtension"/>
      <addaction name="actionLineWrapping"/>
      <addaction name="actionVerboseOutput"/>
+     <addaction name="actionXmlOutput"/>
     </widget>
     <addaction name="actionOpen"/>
     <addaction name="separator"/>
@@ -380,6 +381,14 @@
    </property>
    <property name="text">
     <string>Enable Line Wrapping</string>
+   </property>
+  </action>
+  <action name="actionXmlOutput">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Enable XML-style Output</string>
    </property>
   </action>
  </widget>

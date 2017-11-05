@@ -27,7 +27,7 @@
 
 //Version
 MIXP_DEFINE_CONF(unsigned int, mixp_versionMajor,   2)
-MIXP_DEFINE_CONF(unsigned int, mixp_versionMinor,  27)
+MIXP_DEFINE_CONF(unsigned int, mixp_versionMinor,  28)
 
 //MediaInfo Version
 MIXP_DEFINE_CONF(unsigned int, mixp_miVersionMajor,  0)

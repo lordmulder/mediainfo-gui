@@ -45,6 +45,8 @@
 #include <QDesktopServices>
 #include <QClipboard>
 #include <QCryptographicHash>
+#include <QXmlStreamReader>
+#include <QXmlStreamWriter>
 
 //CRT
 #include <ctime>
@@ -64,19 +66,9 @@ const char *STATUS_BLNK = ">> You can drop any type of media files here <<";
 const char *STATUS_WORK = "Analyzing file(s), this may take a moment or two...<br><br><br><br><img src=\":/res/loading.png\">";
 
 //Links
-const char *LINK_MULDER = "http://muldersoft.com/";
+const char *LINK_MULDER    = "http://muldersoft.com/";
 const char *LINK_MEDIAINFO = "http://mediaarea.net/en/MediaInfo"; /*"http://mediainfo.sourceforge.net/en"*/
-const char *LINK_DISCUSS = "http://forum.doom9.org/showthread.php?t=96516";
-
-//HTML characters
-static QList<QPair<const QString, const QString>> HTML_ESCAPE(void)
-{
-	QList<QPair<const QString, const QString>> htmlEscape;
-	htmlEscape << QPair<const QString, const QString>("<", "&lt;");
-	htmlEscape << QPair<const QString, const QString>(">", "&gt;");
-	htmlEscape << QPair<const QString, const QString>("&", "&amp;");
-	return htmlEscape;
-}
+const char *LINK_DISCUSS   = "http://forum.doom9.org/showthread.php?t=96516";
 
 //MediaInfo
 static const struct
@@ -106,7 +98,6 @@ CMainWindow::CMainWindow(const QString &tempFolder, MUtils::IPCChannel *const ip
 	QMainWindow(parent),
 	m_tempFolder(tempFolder),
 	m_ipcThread(new IPCReceiveThread(ipc)),
-	m_htmlEscape(HTML_ESCAPE()),
 	m_status(APP_STATUS_STARTING),
 	ui(new Ui::MainWindow)
 {
@@ -138,6 +129,8 @@ CMainWindow::CMainWindow(const QString &tempFolder, MUtils::IPCChannel *const ip
 	connect(ui->actionAbout,           SIGNAL(triggered()),                this, SLOT(showAboutScreen()));
 	connect(ui->actionShellExtension,  SIGNAL(toggled(bool)),              this, SLOT(updateShellExtension(bool)));
 	connect(ui->actionLineWrapping,    SIGNAL(toggled(bool)),              this, SLOT(updateLineWrapping(bool)));
+	connect(ui->actionVerboseOutput,   SIGNAL(toggled(bool)),              this, SLOT(toggleOutputOption(bool)));
+	connect(ui->actionXmlOutput,       SIGNAL(toggled(bool)),              this, SLOT(toggleOutputOption(bool)));
 	connect(m_ipcThread.data(),        SIGNAL(received(quint32, QString)), this, SLOT(received(quint32, QString)));
 	ui->versionLabel->installEventFilter(this);
 
@@ -416,6 +409,7 @@ void CMainWindow::analyzeNextFile(void)
 	//Generate the command line
 	QStringList commandLine;
 	if(ui->actionVerboseOutput->isChecked()) commandLine << "--Full";
+	if(ui->actionXmlOutput->isChecked()) commandLine << "--Output=XML";
 	commandLine << QDir::toNativeSeparators(filePath);
 
 	//Start analyziation
@@ -552,11 +546,11 @@ void CMainWindow::processFinished(void)
 	}
 
 	//Remove leading "E:" lines
-	while ((!m_outputLines.isEmpty()) && m_outputLines.first().trimmed().startsWith(QLatin1String("E: ")))
-	{
-		qWarning("E: line has been removed!");
-		m_outputLines.takeFirst();
-	}
+	/*while ((!m_outputLines.isEmpty()) && m_outputLines.first().trimmed().startsWith(QLatin1String("E: ")))
+	//{
+	//	qWarning("E: line has been removed!");
+	//	m_outputLines.takeFirst();
+	}*/
 
 	//Failed?
 	if(m_outputLines.empty())
@@ -589,17 +583,20 @@ void CMainWindow::processFinished(void)
 	//Hide banner
 	if(m_floatingLabel->isVisible()) m_floatingLabel->hide();
 
-	//Convert to HTML
-	QStringList htmlData(m_outputLines);
-	escapeHtmlChars(htmlData);
-
-	//Highlight headers
-	htmlData.replaceInStrings(QRegExp("^(-+)$"), "<font color=\"darkgray\">\\1</font>");				//Separator lines
-	htmlData.replaceInStrings(QRegExp("^([^:<>]+):(.+)$"), "<font color=\"darkblue\">\\1:</font>\\2");	//Info lines
-	htmlData.replaceInStrings(QRegExp("^([^:<>]+)$"), "<b><font color=\"darkred\">\\1</font></b>");		//Heading lines
-
 	//Update document
-	ui->textBrowser->setHtml(QString("<pre style=\"white-space:pre-wrap\">%1</pre>").arg(htmlData.join("<br>")));
+	if (!ui->actionXmlOutput->isChecked())
+	{
+		QStringList htmlData = escapeHtmlLines(m_outputLines);
+		htmlData.replaceInStrings(QRegExp("^(-+)$"), "<font color=\"darkgray\">\\1</font>");
+		htmlData.replaceInStrings(QRegExp("^([^:<>]+):(.+)$"), "<font color=\"darkblue\">\\1:</font>\\2");
+		htmlData.replaceInStrings(QRegExp("^([^:<>]+)$"), "<b><font color=\"darkred\">\\1</font></b>");
+		ui->textBrowser->setHtml(QString("<pre style=\"white-space:pre-wrap\">%1</pre>").arg(htmlData.join("<br>")));
+	}
+	else
+	{
+		const QString xmlData = Qt::escape(reformatXml(m_outputLines.join(QLatin1String("\n"))));
+		ui->textBrowser->setHtml(QString("<pre style=\"white-space:pre-wrap\">%1</pre>").arg(xmlData));
+	}
 
 	//Enable actions
 	if(!m_outputLines.empty())
@@ -639,6 +636,11 @@ void CMainWindow::updateShellExtension(bool checked)
 void CMainWindow::updateLineWrapping(bool checked)
 {
 	ui->textBrowser->setLineWrapMode(checked ? QTextEdit::WidgetWidth : QTextEdit::NoWrap);
+}
+
+void CMainWindow::toggleOutputOption(bool checked)
+{
+	QMessageBox::information(this, this->windowTitle(), tr("Changes will take effect the next time that you open a file!"));
 }
 
 void CMainWindow::linkTriggered(void)
@@ -892,11 +894,29 @@ QString CMainWindow::getMediaInfoPath(void)
 	return QString();
 }
 
-void CMainWindow::escapeHtmlChars(QStringList &strings)
+QStringList CMainWindow::escapeHtmlLines(const QStringList &strings)
 {
-	QList<QPair<const QString, const QString>>::ConstIterator iter;
-	for(iter = m_htmlEscape.constBegin(); iter != m_htmlEscape.constEnd(); iter++)
+	QStringList output;
+	for (QStringList::const_iterator iter = strings.constBegin(); iter != strings.constEnd(); ++iter)
 	{
-		strings.replaceInStrings((*iter).first, (*iter).second);
+		output << Qt::escape(*iter);
 	}
+	return output;
+}
+
+QString CMainWindow::reformatXml(const QString &input)
+{
+	QString output;
+	QXmlStreamReader reader(input);
+	QXmlStreamWriter writer(&output);
+	writer.setAutoFormatting(true);
+	while (!reader.atEnd())
+	{
+		reader.readNext();
+		if (!reader.isWhitespace())
+		{
+			writer.writeCurrentToken(reader);
+		}
+	}
+	return output;
 }
