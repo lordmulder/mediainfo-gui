@@ -90,6 +90,7 @@ MEDIAINFO_BIN[] =
 };
 
 //Const
+static const int UPDATE_TIMEOUT = 9;
 static const int FILE_RECEIVE_DELAY = 1750;
 
 ////////////////////////////////////////////////////////////
@@ -194,10 +195,10 @@ void CMainWindow::showEvent(QShowEvent *event)
 	
 	//Init test
 	ui->versionLabel->setText(QString("v%1 / v%2 (%3)").arg(MIXP_VERSION_STR, MI_VERSION_STR, MUtils::Version::app_build_date().toString(Qt::ISODate)));
-	ui->updateLabel->setText(tr("This version is more than six month old and probably outdated. Please check <a href=\"%1\">%1</a> for updates!").arg(LINK_MULDER));
+	ui->updateLabel->setText(tr("This version is more than %1 month old and probably outdated. Please check <a href=\"%2\">%2</a> for updates!").arg(QString::number(UPDATE_TIMEOUT), LINK_MULDER));
 
 	//Show update hint?
-	ui->updateLabel->setVisible(MUtils::Version::app_build_date().addMonths(6) < MUtils::OS::current_date());
+	ui->updateLabel->setVisible(MUtils::Version::app_build_date().addMonths(UPDATE_TIMEOUT) < MUtils::OS::current_date());
 
 	//Force resize event
 	resizeEvent(NULL);
