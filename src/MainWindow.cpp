@@ -57,6 +57,9 @@
 #include "IPC.h"
 
 //Macros
+#define MIXP_VERSION_STR (QString().sprintf("%u.%02u", g_mixp_versionMajor, g_mixp_versionMinor, g_mixp_versionMinor))
+#define MI_VERSION_STR (QString().sprintf((g_mixp_mediaInfoVerPatch > 0) ? "%u.%02u.%u" : "%u.%02u", g_mixp_mediaInfoVerMajor, g_mixp_mediaInfoVerMinor, g_mixp_mediaInfoVerPatch))
+#define UTIL_VERSION_STR (QString().sprintf("%u.%02u", MUtils::Version::lib_version_major(), MUtils::Version::lib_version_minor()))
 #define SET_FONT_BOLD(WIDGET,BOLD) { QFont _font = WIDGET->font(); _font.setBold(BOLD); WIDGET->setFont(_font); }
 #define SET_TEXT_COLOR(WIDGET,COLOR) { QPalette _palette = WIDGET->palette(); _palette.setColor(QPalette::WindowText, (COLOR)); _palette.setColor(QPalette::Text, (COLOR)); WIDGET->setPalette(_palette); }
 #define APPLICATION_IS_IDLE (m_status == APP_STATUS_IDLE)
@@ -190,7 +193,7 @@ void CMainWindow::showEvent(QShowEvent *event)
 	QMainWindow::showEvent(event);
 	
 	//Init test
-	ui->versionLabel->setText(QString("v%1 / v%2 (%3)").arg(QString().sprintf("%u.%02u", g_mixp_versionMajor, g_mixp_versionMinor), QString().sprintf("%u.%02u", g_mixp_mediaInfoVeMajor, g_mixp_mediaInfoVeMinor), MUtils::Version::app_build_date().toString(Qt::ISODate)));
+	ui->versionLabel->setText(QString("v%1 / v%2 (%3)").arg(MIXP_VERSION_STR, MI_VERSION_STR, MUtils::Version::app_build_date().toString(Qt::ISODate)));
 	ui->updateLabel->setText(tr("This version is more than six month old and probably outdated. Please check <a href=\"%1\">%1</a> for updates!").arg(LINK_MULDER));
 
 	//Show update hint?
@@ -662,22 +665,24 @@ void CMainWindow::showAboutScreen(void)
 
 	const QDate buildDate = MUtils::Version::app_build_date();
 	const QDate curntDate = MUtils::OS::current_date();
+	const int year = qMax(buildDate.year(), curntDate.year());
 
 	QString text;
 
-	text += QString().sprintf("<nobr><tt><b>MediaInfoXP v%u.%02u - Simple GUI for MediaInfo</b><br>", g_mixp_versionMajor, g_mixp_versionMinor);
-	text += QString().sprintf("Copyright (c) 2004-%04d LoRd_MuldeR &lt;mulder2@gmx.de&gt;. Some rights reserved.<br>", qMax(buildDate.year(),curntDate.year()));
-	text += QString().sprintf("Built on %s at %s, using Qt Framework v%s.<br><br>", buildDate.toString(Qt::ISODate).toLatin1().constData(), g_mixp_buildTime, qVersion());
-	text += QString().sprintf("This program is free software: you can redistribute it and/or modify<br>");
-	text += QString().sprintf("it under the terms of the GNU General Public License &lt;http://www.gnu.org/&gt;.<br>");
-	text += QString().sprintf("Note that this program is distributed with ABSOLUTELY NO WARRANTY.<br><br>");
-	text += QString().sprintf("Please check the web-site at <a href=\"%s\">%s</a> for updates !!!<br>", LINK_MULDER, LINK_MULDER);
-	text += QString().sprintf("<hr><br>");
-	text += QString().sprintf("<b>This application is powered by MediaInfo v%u.%02u</b><br>", g_mixp_mediaInfoVeMajor, g_mixp_mediaInfoVeMinor);
-	text += QString().sprintf("Free and OpenSource tool for displaying technical information about media files.<br>");
-	text += QString().sprintf("Copyright (c) 2002-%04d MediaArea.net SARL. All rights reserved.<br><br>", qMax(buildDate.year(),curntDate.year()));
-	text += QString().sprintf("Redistribution and use is permitted according to the (2-Clause) BSD License.<br>");
-	text += QString().sprintf("Please see <a href=\"%s\">%s</a> for more information.<br></tt></nobr>", LINK_MEDIAINFO, LINK_MEDIAINFO);
+	text += QString("<nobr><tt><b>MediaInfoXP v%1 - Simple GUI for MediaInfo</b><br>").arg(MIXP_VERSION_STR);
+	text += QString("Copyright (c) 2004-%1 LoRd_MuldeR &lt;mulder2@gmx.de&gt;. Some rights reserved.<br>").arg(QString().sprintf("%04d", year));
+	text += QString("Built on %1 at %2, using Qt Framework v%3.<br>").arg(buildDate.toString(Qt::ISODate), QString::fromLatin1(g_mixp_buildTime), QString::fromLatin1(qVersion()));
+	text += QString("Linked against MUtilities library v%1, built on %2 at %3.<br><br>").arg(UTIL_VERSION_STR, MUtils::Version::lib_build_date().toString(Qt::ISODate), MUtils::Version::lib_build_time().toString(Qt::ISODate));
+	text += QString("This program is free software: you can redistribute it and/or modify<br>");
+	text += QString("it under the terms of the GNU General Public License &lt;http://www.gnu.org/&gt;.<br>");
+	text += QString("Note that this program is distributed with ABSOLUTELY NO WARRANTY.<br><br>");
+	text += QString("Please check the web-site at <a href=\"%1\">%1</a> for updates !!!<br>").arg(QString::fromLatin1(LINK_MULDER));
+	text += QString("<hr><br>");
+	text += QString("<b>This application is powered by MediaInfo v%1</b><br>").arg(MI_VERSION_STR);
+	text += QString("Free and OpenSource tool for displaying technical information about media files.<br>");
+	text += QString("Copyright (c) 2002-%1 MediaArea.net SARL. All rights reserved.<br><br>").arg(QString().sprintf("%04d", year));
+	text += QString("Redistribution and use is permitted according to the (2-Clause) BSD License.<br>");
+	text += QString("Please see <a href=\"%1\">%1</a> for more information.<br></tt></nobr>").arg(QString::fromLatin1(LINK_MEDIAINFO));
 
 	QMessageBox aboutBox(this);
 	aboutBox.setIconPixmap(QIcon(":/res/logo.png").pixmap(64,64));
