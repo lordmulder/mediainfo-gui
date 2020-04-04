@@ -23,8 +23,8 @@ IDI_ICON1               ICON                    "MediaInfoXP.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
-  FILEVERSION    1,0,0,0
-  PRODUCTVERSION 1,0,0,0
+  FILEVERSION    2,3,5,0
+  PRODUCTVERSION 2,3,5,0
   FILEFLAGSMASK  0x17L
 #ifdef _DEBUG
   FILEFLAGS 0x3L
@@ -43,13 +43,13 @@ BEGIN
             VALUE "Comments", "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY"
             VALUE "CompanyName", "Free Software Foundation"
             VALUE "FileDescription", "MediaInfoXP - GUI for MediaInfo"
-            VALUE "FileVersion", "1.00"
+            VALUE "FileVersion", "2.35"
             VALUE "InternalName", "MediaInfoXP_Qt"
-            VALUE "LegalCopyright", "Copyright (C) 2004-2019 LoRd_MuldeR <MuldeR2@GMX.de>"
+            VALUE "LegalCopyright", "Copyright (C) 2004-2020 LoRd_MuldeR <MuldeR2@GMX.de>"
             VALUE "LegalTrademarks", "This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License <http://www.gnu.org/>"
             VALUE "OriginalFilename", "MediaInfoXP.exe"
             VALUE "ProductName", "MediaInfoXP - GUI for MediaInfo"
-            VALUE "ProductVersion", "1.00"
+            VALUE "ProductVersion", "2.35"
             VALUE "Website" "http://muldersoft.com/"
         END
     END

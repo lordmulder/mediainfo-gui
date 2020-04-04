@@ -1,11 +1,12 @@
-/.vs
+/**/.vs
 /tmp/
 /obj/
 /bin/
 /ipch/
 /out
-/*.sdf
-/*.suo
-/*.user
-/*.opensdf
+*.sdf
+*.suo
+*.user
+*.opensdf
 *.db
+*.local.*
