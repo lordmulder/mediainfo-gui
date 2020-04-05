@@ -103,12 +103,15 @@ static int mixp_main(int &argc, char **argv)
 		return EXIT_SUCCESS;
 	}
 
+	const QString baseFolder = QDir(QCoreApplication::applicationDirPath()).canonicalPath();
+	qDebug("Base directory is:\n%s\n", MUTILS_UTF8(QDir::toNativeSeparators(baseFolder)));
+
 	//Get temp folder
 	const QString tempFolder =  MUtils::temp_folder();
-	qDebug("TEMP folder is:\n%s\n", QDir::toNativeSeparators(tempFolder).toUtf8().constData());
+	qDebug("Temp directory is:\n%s\n", MUTILS_UTF8(QDir::toNativeSeparators(tempFolder)));
 
 	//Create main window
-	QScopedPointer<CMainWindow> mainWindow(new CMainWindow(tempFolder, ipcChannel.data()));
+	QScopedPointer<CMainWindow> mainWindow(new CMainWindow(baseFolder, tempFolder, ipcChannel.data()));
 	mainWindow->show();
 
 	//Run application

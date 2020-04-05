@@ -97,9 +97,10 @@ static const int FILE_RECEIVE_DELAY = 1750;
 // Constructor
 ////////////////////////////////////////////////////////////
 
-CMainWindow::CMainWindow(const QString &tempFolder, MUtils::IPCChannel *const ipc, QWidget *parent)
+CMainWindow::CMainWindow(const QString &baseFolder, const QString &tempFolder, MUtils::IPCChannel *const ipc, QWidget *parent)
 :
 	QMainWindow(parent),
+	m_baseFolder(baseFolder),
 	m_tempFolder(tempFolder),
 	m_ipcThread(new IPCReceiveThread(ipc)),
 	m_status(APP_STATUS_STARTING),
@@ -767,6 +768,7 @@ static bool VALIDATE_MEDIAINFO(QFile *const handle, const char *const expected_c
 {
 	if(!handle->reset())
 	{
+		qWarning("Failed to rewind file to be checked!\n");
 		return false;
 	}
 
@@ -834,9 +836,10 @@ QString CMainWindow::getMediaInfoPath(void)
 {
 	//Detect MediaInfo arch
 	const QPair<QString, const char*> arch = getMediaInfoArch();
+	const QString fileName(QString("MediaInfo.%1.exe").arg(arch.first));
 
 	//Setup resource
-	const QResource mediaInfoRes(QString(":/res/bin/MediaInfo.%1.exe").arg(arch.first));
+	const QResource mediaInfoRes(QString(":/res/bin/%1").arg(fileName));
 	if((!mediaInfoRes.isValid()) || (!mediaInfoRes.data()))
 	{
 		qFatal("MediaInfo resource could not be initialized!");
@@ -850,53 +853,79 @@ QString CMainWindow::getMediaInfoPath(void)
 		{
 			return m_mediaInfoHandle->fileName();
 		}
-		m_mediaInfoHandle->remove();
+		m_mediaInfoHandle->close();
+		m_mediaInfoHandle.reset();
 	}
 
-	//Extract MediaInfo binary now!
-	qDebug("MediaInfo binary not existing yet, going to extract now...\n");
-	const QString filePath = MUtils::make_unique_file(m_tempFolder, "MediaInfo", arch.first + QLatin1String(".exe"));
-	if (!filePath.isEmpty())
+	//Try to re-use file from cache first
+	const QFileInfo cachedFile(QString("%1/cache/%2").arg(m_baseFolder, fileName));
+	if (cachedFile.exists() && cachedFile.isFile())
 	{
-		m_mediaInfoHandle.reset(new QFile(filePath));
-		if (m_mediaInfoHandle->open(QIODevice::ReadWrite | QIODevice::Truncate))
+		qDebug("MediaInfo binary exists in cache, re-using existing binary...\n");
+		m_mediaInfoHandle.reset(new QFile(cachedFile.absoluteFilePath()));
+		qDebug("MediaInfo path is:\n%s\n", m_mediaInfoHandle->fileName().toUtf8().constData());
+		if (m_mediaInfoHandle->open(QIODevice::ReadOnly))
 		{
-			if (m_mediaInfoHandle->write(reinterpret_cast<const char*>(mediaInfoRes.data()), mediaInfoRes.size()) == mediaInfoRes.size())
+			if (VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), arch.second))
 			{
-				qDebug("MediaInfo path is:\n%s\n", m_mediaInfoHandle->fileName().toUtf8().constData());
-				m_mediaInfoHandle->close();
-				if (!m_mediaInfoHandle->open(QIODevice::ReadOnly))
-				{
-					qWarning("Failed to open MediaInfo binary for reading!\n");
-					m_mediaInfoHandle->remove();
-				}
-			}
-			else
-			{
-				qWarning("Failed to write data to MediaInfo binary file!\n");
-				m_mediaInfoHandle->remove();
+				return m_mediaInfoHandle->fileName();
 			}
 		}
 		else
 		{
-			qWarning("Failed to open MediaInfo binary for writing!\n");
+			qWarning("Failed to open MediaInfo binary for reading!\n");
+		}
+		m_mediaInfoHandle->close();
+		m_mediaInfoHandle.reset();
+	}
+
+	//Generate temporary file name
+	qDebug("MediaInfo binary not existing yet, going to extract now...\n");
+	const QString filePath = MUtils::make_unique_file(m_tempFolder, "MediaInfo", arch.first + QLatin1String(".exe"));
+	if (filePath.isEmpty())
+	{
+		qWarning("Failed to gemerate MediaInfo outout path!\n");
+		return QString();
+	}
+
+	//Extract the MediaInfo binary now!
+	m_mediaInfoHandle.reset(new QFile(filePath));
+	if (m_mediaInfoHandle->open(QIODevice::ReadWrite | QIODevice::Truncate))
+	{
+		qDebug("MediaInfo path is:\n%s\n", MUTILS_UTF8(m_mediaInfoHandle->fileName()));
+		const qint64 bytesWritten = m_mediaInfoHandle->write(reinterpret_cast<const char*>(mediaInfoRes.data()), mediaInfoRes.size());
+		m_mediaInfoHandle->close();
+		if (bytesWritten != mediaInfoRes.size())
+		{
+			qWarning("Failed to write data to MediaInfo binary file!\n");
+			m_mediaInfoHandle->remove();
+			m_mediaInfoHandle.reset();
+			return QString();
 		}
 	}
 	else
 	{
-		qWarning("Failed to gemerate MediaInfo outout path!\n");
+		qWarning("Failed to open MediaInfo binary for writing!\n");
+		m_mediaInfoHandle.reset();
+		return QString();
 	}
 
-	//Validate file content, after it has been extracted
-	if(!m_mediaInfoHandle.isNull())
+	//Validate file's content, after it has been extracted
+	if (m_mediaInfoHandle->open(QIODevice::ReadOnly))
 	{
-		if(VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), arch.second))
+		if (VALIDATE_MEDIAINFO(m_mediaInfoHandle.data(), arch.second))
 		{
 			return m_mediaInfoHandle->fileName();
 		}
-		m_mediaInfoHandle->remove();
+		m_mediaInfoHandle->close();
+	}
+	else
+	{
+		qWarning("Failed to open MediaInfo binary for reading!\n");
 	}
 
+	m_mediaInfoHandle->remove();
+	m_mediaInfoHandle.reset();
 	return QString();
 }
 

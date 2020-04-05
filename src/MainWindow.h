@@ -44,7 +44,7 @@ class CMainWindow: public QMainWindow
 	Q_OBJECT
 
 public:
-	CMainWindow(const QString &tempFolder, MUtils::IPCChannel *const ipc, QWidget *parent = 0);
+	CMainWindow(const QString &baseFolder, const QString &tempFolder, MUtils::IPCChannel *const ipc, QWidget *parent = 0);
 	~CMainWindow(void);
 
 private slots:
@@ -88,6 +88,7 @@ private:
 	Ui::MainWindow *ui; //for Qt UIC
 	
 	int m_status;
+	const QString &m_baseFolder;
 	const QString &m_tempFolder;
 
 	QScopedPointer<IPCReceiveThread> m_ipcThread;
