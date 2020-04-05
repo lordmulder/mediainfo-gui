@@ -44,11 +44,11 @@ REM // Get current date and time (in ISO format)
 REM ///////////////////////////////////////////////////////////////////////////
 set "ISO_DATE="
 set "ISO_TIME="
-if not exist "%~dp0\..\Prerequisites\GnuWin32\date.exe" BuildError
-for /F "tokens=1,2 delims=:" %%a in ('"%~dp0\..\Prerequisites\GnuWin32\date.exe" +ISODATE:%%Y-%%m-%%d') do (
+if not exist "%~dp0\..\Prerequisites\MSYS\1.0\bin\date.exe" BuildError
+for /F "tokens=1,2 delims=:" %%a in ('"%~dp0\..\Prerequisites\MSYS\1.0\bin\date.exe" +ISODATE:%%Y-%%m-%%d') do (
 	if "%%a"=="ISODATE" set "ISO_DATE=%%b"
 )
-for /F "tokens=1,2,3,4 delims=:" %%a in ('"%~dp0\..\Prerequisites\GnuWin32\date.exe" +ISOTIME:%%T') do (
+for /F "tokens=1,2,3,4 delims=:" %%a in ('"%~dp0\..\Prerequisites\MSYS\1.0\bin\date.exe" +ISOTIME:%%T') do (
 	if "%%a"=="ISOTIME" set "ISO_TIME=%%b:%%c:%%d"
 )
 if "%ISO_DATE%"=="" goto BuildError
@@ -128,7 +128,7 @@ REM ///////////////////////////////////////////////////////////////////////////
 REM // Build the package
 REM ///////////////////////////////////////////////////////////////////////////
 pushd "%PACK_PATH%
-"%~dp0\..\Prerequisites\GnuWin32\zip.exe" -9 -r -z "%~dp0\out\%OUT_NAME%.zip" "*.*" < "%~dp0\out\%OUT_NAME%.txt"
+"%~dp0\..\Prerequisites\InfoZip\zip.exe" -9 -r -z "%~dp0\out\%OUT_NAME%.zip" "*.*" < "%~dp0\out\%OUT_NAME%.txt"
 popd
 rmdir /Q /S "%PACK_PATH%"
 attrib +R "%~dp0\out\%OUT_NAME%.zip"
