@@ -57,7 +57,7 @@
 #include "IPC.h"
 
 //Macros
-#define MIXP_VERSION_STR (QString().sprintf("%u.%02u", g_mixp_versionMajor, g_mixp_versionMinor, g_mixp_versionMinor))
+#define MIXP_VERSION_STR (QString().sprintf((g_mixp_versionPatch > 0) ? "%u.%02u.%u" : "%u.%02u", g_mixp_versionMajor, g_mixp_versionMinor, g_mixp_versionPatch))
 #define MI_VERSION_STR (QString().sprintf((g_mixp_mediaInfoVerPatch > 0) ? "%u.%02u.%u" : "%u.%02u", g_mixp_mediaInfoVerMajor, g_mixp_mediaInfoVerMinor, g_mixp_mediaInfoVerPatch))
 #define UTIL_VERSION_STR (QString().sprintf("%u.%02u", MUtils::Version::lib_version_major(), MUtils::Version::lib_version_minor()))
 #define SET_FONT_BOLD(WIDGET,BOLD) { QFont _font = WIDGET->font(); _font.setBold(BOLD); WIDGET->setFont(_font); }
