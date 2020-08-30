@@ -1,16 +1,20 @@
-﻿Notes :
--------
-+ Added
-- Deleted
-x Bug correction
-#number is the identifier of bug report (B), requested feature (F) or patch (P)
-bug reports and feature request are here :
-https://sourceforge.net/p/mediainfo/_list/tickets
+﻿======================
+ MediaInfo change log
+======================
 
-Known bugs
-----------
-- Languages (other than english and French) : not all words are translated, I need translators!
-- Others? https://sourceforge.net/p/mediainfo/_list/tickets
+Version 20.08, 2020-08-11
+-------------
++ MPEG-H 3D Audio full featured support (group presets, switch groups, groups, signal groups)
++ MP4/MOV: support of more metadata locations
++ JSON and XML outputs: authorize "complete" output
++ MPEG-4: support of TrueHD
++ WM: show legacy value of performer if not same as modern one
++ WAV: trace of adtl (Associated Data List) chunk
+x URL encoding detection fix for URL having a query part (issue with e.g. pre-signed AWS S3 URLs)
+x Don't try to seek to the end (false positive range related error with HTTP)
+x DPX: don't load the whole file in RAM
+x Opus: fix wrong channel mapping
+x Miscellaneous other bug fixes
 
 Version 20.03, 2020-04-03
 -------------
@@ -40,6 +44,7 @@ x SubRip: bad handling of files having a quote character
 
 Version 19.07, 2019-07-16
 --------------
++ Mac App Store version: File comparison (InApp purchase)
 + Dolby E: readout of Dolby E program description
 + MXF: Detection of Dolby Vision
 + MP4: support of Spatial Audio Metadata
@@ -84,6 +89,7 @@ x I1096, OGG: assign METADATA_BLOCK_PICTURE tag to cover
 
 Version 18.12, 2018-12-10
 --------------
++ Android version: https://play.google.com/store/apps/details?id=net.mediaarea.mediainfo
 + DCP: support of multi-reel packages
 + EBUCore: added some FFV1 related metadata
 + JPEG: better info display of CYMK files
@@ -142,7 +148,7 @@ x Mastering Display Color Primaries: was always showing BT.709 instead of real v
 x Attachments: do not provide anymore attachments content in XML by default, fixes
 
 Version 18.03.1, 2018-03-26
- --------------
+--------------
 x Fix regression on Windows with directory names beginning by n or r.
 
 Version 18.03, 2018-03-19
@@ -151,7 +157,7 @@ Version 18.03, 2018-03-19
 + MXF: HDR metadata support
 + MXF: detection and parsing of ProRes (SMPTE RDD 44)
 + MXF: framerate container/stream incoherence detection
-+ DPX: endianess, packing mode, compression mode
++ DPX: endianness, packing mode, compression mode
 + AVC: add consumer camera recording date/time
 + AVC: add consumer camera model name and iris F number
 + JPEG: ICC parsing, display of ICC color space
@@ -162,9 +168,9 @@ x colour description: trying (again!) to have more coherent labeling
 x DCP/IMF: fix crash with some CPL files
 x I782, FFV1: Golomb Rice parsing was wrong
 x I210, FFV1: remove sar_den test must be 0 if sar_num is 0
-x AAC: SBR parsing issue with 3+ channel streams, with sometimes  false-positive PS detection
-x BMP: was wrongly considering 4-bit without palette as with palette so  wrong bit depth
-x DPX: some elements in trace were wrongly displayed (wrong endianess)
+x AAC: SBR parsing issue with 3+ channel streams, with sometimes false-positive PS detection
+x BMP: was wrongly considering 4-bit without palette as with palette so wrong bit depth
+x DPX: some elements in trace were wrongly displayed (wrong endianness)
 x B1082, Ancillary data: fix infinite loop
 
 Version 17.12, 2017-12-21
@@ -194,8 +200,8 @@ Version 17.10, 2017-11-02
 --------------
 + We need your support! Visit https://mediaarea.net/SupportUs
 + Version scheme is now YY.MM (year dot month, 2 digits each)
-+ New MediaInfo XML output, with XSD, more suitable for automatic parsing. Use " --Output=OLDXML" for keeping previous behavior
-+ New " --Info_OutputFormats" option for listing supported output formats
++ New MediaInfo XML output, with XSD, more suitable for automatic parsing. Use Option("Inform", "OLDXML") for keeping previous behavior
++ New "Info_OutputFormats" option for listing supported output formats
 + Universal Ad ID: refactored display, better display of value and registry, XML name slightly modified
 + MOV: support of HDR metadata (MasteringDisplayColorVolume, MaxCLL, MaxFALL)
 + BWF: display of UMID and loudness info
@@ -209,7 +215,7 @@ x B1068, MPEG Audio: Incoherent duration between General and Audio parts, Audio 
 x Matroska: showing "A_MS/ACM" Matroska CodecID
 x MXF: Fix crash with some buggy files
 x MXF: was not well supporting MXF referencing only 1 file
-x PCM in WAV: 8-bit content is unsigned and without endianess
+x PCM in WAV: 8-bit content is unsigned and without endianness
 x PCM in WAV and Matroska: More coherency between Wave info and ExtensibleWave Info (bitdepth, sign)
 x WAV: GUID display was with first 8 bytes in wrong order
 x Several crash fixes
@@ -252,7 +258,7 @@ Version 0.7.97, 2017-06-30
 + AAC: ADTS/ADIF duration in case of full parsing and/or "risky bitrate estimation" option
 x MXF: less false-positive detection of some files as MXF
 x B1053, WAV: metadata coherency, ignore "fact" chunk more often in order to avoid bad information when this chunk is buggy
-x B1029, DPX: DPX endianess not considered with some fields in MediaTrace
+x B1029, DPX: DPX endianness not considered with some fields in MediaTrace
 x Custom template: can check "Other" part as any other parts
 x Matroska: fix parsing issue with small byte blocks are taken from the file e.g. when reading from HTTP link
 x Matroska: files with unknown block size were flagged as truncated
@@ -337,9 +343,12 @@ x MXF/Teletext: was not correctly detecting non subtitle streams
 x ID3v2: TP2 tag was incorrectly mapped to "Accompaniment", now mapped to "Album_Performer"
 x ID3v2: TSO2 tag was incorrectly mapped to "Performer_Sort", now mapped to "Album_Performer_Sort"
 x ID3v2: TCMP tag was displayed twice (2 "Compilation" lines)
+x Windows version was sometimes showing a long character string in Windows explorer, changed to a shorter character string
 
 Version 0.7.91, 2016-11-30
 --------------
++ Add TIFF extension to Windows shell extension
+x Debian 9 and Ubuntu 16.10+: Remove unneeded dependency
 + IMF and PTX: more languages detected from file names (but the full list of common languages tags still need to be added)
 + IMF and PTX: support of non-standard but common "LAS" = "Spanish (Latin America)" language code
 + MXF: Support of color primaries, transfer characteristic, coding equations defined in SMPTE ST 2067-21:2016 e.g. xvYCC or BT.2020
