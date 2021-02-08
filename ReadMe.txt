@@ -1,6 +1,6 @@
 
  MediaInfoXP - Simple GUI for MediaInfo
- Copyright (C) 2004-2020 LoRd_MuldeR <MuldeR2@GMX.de>
+ Copyright (C) 2004-2021 LoRd_MuldeR <MuldeR2@GMX.de>
  http://www.muldersoft.com/
 
  This program is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 
  MediaInfo(Lib) License
 
- Copyright (c) 2002-2020 MediaArea.net SARL. All rights reserved.
+ Copyright (c) 2002-2021 MediaArea.net SARL. All rights reserved.
 
  Redistribution and use in source and binary forms, with or
  without modification, are permitted provided that the following
