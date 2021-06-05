@@ -63,6 +63,8 @@
 #define SET_FONT_BOLD(WIDGET,BOLD) { QFont _font = WIDGET->font(); _font.setBold(BOLD); WIDGET->setFont(_font); }
 #define SET_TEXT_COLOR(WIDGET,COLOR) { QPalette _palette = WIDGET->palette(); _palette.setColor(QPalette::WindowText, (COLOR)); _palette.setColor(QPalette::Text, (COLOR)); WIDGET->setPalette(_palette); }
 #define APPLICATION_IS_IDLE (m_status == APP_STATUS_IDLE)
+#define HAVE_SSE2(X) ((X).features & MUtils::CPUFetaures::FLAG_SSE2)
+#define HAVE_AVX2(X) ((X).features & MUtils::CPUFetaures::FLAG_AVX2)
 
 //Text
 const char *STATUS_BLNK = ">> You can drop any type of media files here <<";
@@ -80,12 +82,14 @@ static const struct
 	const char *const checksum;
 	const bool require_x64;
 	const bool require_sse2;
+	const bool require_avx2;
 }
 MEDIAINFO_BIN[] =
 {
-	{ "x64-sse2", g_mixp_checksum_x64, bool(1), bool(1) },
-	{ "x86-sse2", g_mixp_checksum_sse, bool(0), bool(1) },
-	{ "x86-i686", g_mixp_checksum_gen, bool(0), bool(0) },
+	{ "x64-avx2", g_mixp_checksum_x64_avx2, bool(1), bool(1), bool(1) },
+	{ "x64-sse2", g_mixp_checksum_x64_sse2, bool(1), bool(1), bool(0) },
+	{ "x86-sse2", g_mixp_checksum_x86_sse2, bool(0), bool(1), bool(0) },
+	{ "x86-i686", g_mixp_checksum_x86_i686, bool(0), bool(0), bool(0) },
 	{ NULL, NULL, false, false }
 };
 
@@ -761,7 +765,6 @@ void CMainWindow::received(const quint32 &command, const QString &message)
 // PRIVATE FUNCTIONS
 ////////////////////////////////////////////////////////////
 
-#define HAVE_SSE2(X) ((X).features & MUtils::CPUFetaures::FLAG_SSE2)
 static const char *const HASH_SEED = "+A`~}vPe9'~#n+c1Wq/MPo;1XwY\\;Pb.";
 
 static bool VALIDATE_MEDIAINFO(QFile *const handle, const char *const expected_checksum)
@@ -797,7 +800,7 @@ QPair<QString, const char*> CMainWindow::getMediaInfoArch(void)
 	{
 		if (cpu_features.x64 || (!MEDIAINFO_BIN[i].require_x64))
 		{
-			if (HAVE_SSE2(cpu_features) || (!MEDIAINFO_BIN[i].require_sse2))
+			if ((HAVE_SSE2(cpu_features) || (!MEDIAINFO_BIN[i].require_sse2)) && (HAVE_AVX2(cpu_features) || (!MEDIAINFO_BIN[i].require_avx2)))
 			{
 				return qMakePair(QString::fromLatin1(MEDIAINFO_BIN[i].arch), MEDIAINFO_BIN[i].checksum);
 			}

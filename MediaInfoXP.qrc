@@ -19,5 +19,6 @@
     <file>res/bin/MediaInfo.x86-i686.exe</file>
     <file>res/bin/MediaInfo.x86-sse2.exe</file>
     <file>res/bin/MediaInfo.x64-sse2.exe</file>
+    <file>res/bin/MediaInfo.x64-avx2.exe</file>
   </qresource>
 </RCC>

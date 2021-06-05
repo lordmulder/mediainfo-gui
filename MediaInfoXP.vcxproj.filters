@@ -27,12 +27,14 @@
     <CustomBuild Include="gui\Dialog.ui">
       <Filter>Dialogs</Filter>
     </CustomBuild>
-    <CustomBuild Include="MediaInfoXP.qrc" />
     <CustomBuild Include="src\MainWindow.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="src\IPC.h">
       <Filter>Header Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="MediaInfoXP.qrc">
+      <Filter>Resources</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
@@ -67,6 +69,8 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="MediaInfoXP.rcx" />
+    <ResourceCompile Include="MediaInfoXP.rcx">
+      <Filter>Resources</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
