@@ -27,19 +27,19 @@
 
 //Version
 MIXP_DEFINE_CONF(unsigned int, mixp_versionMajor,  2)
-MIXP_DEFINE_CONF(unsigned int, mixp_versionMinor, 39)
-MIXP_DEFINE_CONF(unsigned int, mixp_versionPatch,  1)
+MIXP_DEFINE_CONF(unsigned int, mixp_versionMinor, 40)
+MIXP_DEFINE_CONF(unsigned int, mixp_versionPatch,  0)
 
 //MediaInfo Version
 MIXP_DEFINE_CONF(unsigned int, mixp_mediaInfoVerMajor, 21)
-MIXP_DEFINE_CONF(unsigned int, mixp_mediaInfoVerMinor,  3)
+MIXP_DEFINE_CONF(unsigned int, mixp_mediaInfoVerMinor,  9)
 MIXP_DEFINE_CONF(unsigned int, mixp_mediaInfoVerPatch,  0)
 
 //MediaInfo Checksum
-MIXP_DEFINE_CONF(char*, mixp_checksum_x86_i686, "5a98d81240a60f9e661e2b5ee327fa21d85bfb2ce5ce945cd102affdeaf44bc45a8fe47a60de97e88d873bd7e828d7ada48b74eaa2cbc29bcacfa394d085f38f")
-MIXP_DEFINE_CONF(char*, mixp_checksum_x86_sse2, "822149b4f9d2879bbd37c69b35c92c5bc4ed5c3dae9153dc30cee8fe3ae10d7116ade8c038885adae880f9b7bae0476aba17b5d60f9d8dcdcbe14e6d11cdd2b9")
-MIXP_DEFINE_CONF(char*, mixp_checksum_x64_sse2, "841bfe999635fde807b8679b89a9f1f03155112d358e16fa11ebda8d79813bd304745df7201f727554e6eaeb34b337e991c12725520f436d0e772a40c3a5a003")
-MIXP_DEFINE_CONF(char*, mixp_checksum_x64_avx2, "8f46d5be7cbd1a7bb9750a07d9891a725468506256dfeb0855fdeb8caead47295c977eff4891b9fc22aaeebcb81f1c216fec582b6b55598d0f67f4fd19b07e83")
+MIXP_DEFINE_CONF(char*, mixp_checksum_x86_i686, "e07f44f17d485020820a9fa71bef96f66c1299498a2ff4b95a53664487d04f5fc0bce3bdd645dfcc22be78aa39b2153fbf68723f223f4b874f490778d34a87a8")
+MIXP_DEFINE_CONF(char*, mixp_checksum_x86_sse2, "9d17acd9acf4c93ec8a61e3597367ead962b81b31659d499be7449eb146ddb7c721858b3a1a84803c307d8cf575d0526cab29944a6bff9223b9907a4a7e0701b")
+MIXP_DEFINE_CONF(char*, mixp_checksum_x64_sse2, "5e4f715669de6d1cd346175a43602e82f46fb396b7548c1d127be43776292f6bd43e4a2ec685193933f174880927092d9de22c005d0b1f4fb0668129eff86ac3")
+MIXP_DEFINE_CONF(char*, mixp_checksum_x64_avx2, "f4831a53f777fd1e3951aa27e32213d51d2cbfbba02cd34f698b74e968dc4eacceb8345e42782d9e77b381d988af1079a20e5065a9ef4c798a3066f4eed39f64")
 
 //Build date
 MIXP_DEFINE_CONF(char*, mixp_buildDate, __DATE__)
