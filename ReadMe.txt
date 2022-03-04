@@ -1,7 +1,7 @@
 
  MediaInfoXP - Simple GUI for MediaInfo
  Copyright (C) 2004-2021 LoRd_MuldeR <MuldeR2@GMX.de>
- http://www.muldersoft.com/
+ https://www.muldersoft.com/
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
  with this program; if not, write to the Free Software Foundation, Inc.,
  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
- http://www.gnu.org/licenses/gpl-2.0.txt
+ https://www.gnu.org/licenses/gpl-2.0.txt
 
 
  -----------------------------------------------------------------------
@@ -39,7 +39,7 @@
      distribution.
 
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- ìAS ISî AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ ‚ÄúAS IS‚Äù AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
  HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
