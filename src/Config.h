@@ -27,19 +27,19 @@
 
 //Version
 MIXP_DEFINE_CONF(unsigned int, mixp_versionMajor,  2)
-MIXP_DEFINE_CONF(unsigned int, mixp_versionMinor, 42)
+MIXP_DEFINE_CONF(unsigned int, mixp_versionMinor, 43)
 MIXP_DEFINE_CONF(unsigned int, mixp_versionPatch,  0)
 
 //MediaInfo Version
 MIXP_DEFINE_CONF(unsigned int, mixp_mediaInfoVerMajor, 22)
-MIXP_DEFINE_CONF(unsigned int, mixp_mediaInfoVerMinor,  6)
+MIXP_DEFINE_CONF(unsigned int, mixp_mediaInfoVerMinor,  9)
 MIXP_DEFINE_CONF(unsigned int, mixp_mediaInfoVerPatch,  0)
 
 //MediaInfo Checksum
-MIXP_DEFINE_CONF(char*, mixp_checksum_x86_i686, "698cf0dbe2b6fcf2b56d4c77e041b4f5dbb4fc39f20d2ae7742dfde02c7669c1051034c2643aa99886d64f4140d28ace73aa7716b4f27b0a787f8774f452638d")
-MIXP_DEFINE_CONF(char*, mixp_checksum_x86_sse2, "1878d907ec130e0a5962a6c11ddd2ca7431bc3d13ad70475fe2c22376608199d9d029f8f52772970897dd7119d9eeca19a277195dac6fb83e3fa0b8809786e04")
-MIXP_DEFINE_CONF(char*, mixp_checksum_x64_sse2, "a61ac0daccba8dd1795906d9ec459fb42e0b242d98302bc2a77767f4eabf5c67badcda1fd11e790db4fe35f0d33445e2c4f6ef0dc702f59ad423640841ddfb03")
-MIXP_DEFINE_CONF(char*, mixp_checksum_x64_avx2, "22482f01075025171d841592caf52ec6109b600f6e9d635201f0b25b9c3ee03dec6ebab7544b4d5ea3bc3ef84f367f791b92a5702fb6e2797f8a451c8c65194a")
+MIXP_DEFINE_CONF(char*, mixp_checksum_x86_i686, "7fc1383f1d74d7d9ed8f85aa0cd96e200e143e16d1b7e21bb727b58a7e92b5edaf19d0b81fbedf3a2577264f92ea7e7788aaf9253423f37339eecdde7512f4cd")
+MIXP_DEFINE_CONF(char*, mixp_checksum_x86_sse2, "d415f676f568967dfdc1f1ff3b9ffc45a73d223564307933b5c3ee7f27cfc75639d923324723d171f33edc7e8fd9dd36157b4b605f1b50d558cb93fb785c853a")
+MIXP_DEFINE_CONF(char*, mixp_checksum_x64_sse2, "248a89de21861a9fa4a7181e083adffbb6e458a18dd5e789128d753b3f0ce6aca9648ae8deb164a979e93ec3e66ad111500eaadfa0df337093167df048cfa856")
+MIXP_DEFINE_CONF(char*, mixp_checksum_x64_avx2, "904815fa8507a3acfb666f0452bb7c620ba2132155eb35a57fcafffed55d665374f24289bbe77788d10f91588407f604b2ae25fcd62a53994c385914c246f569")
 
 //Build date
 MIXP_DEFINE_CONF(char*, mixp_buildDate, __DATE__)
