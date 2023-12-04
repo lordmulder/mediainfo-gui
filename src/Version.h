@@ -21,37 +21,7 @@
 
 #pragma once
 
-#define MIXP_CONF_DECLARE(X,Y) extern const X g_##Y;
-
-//Version
-MIXP_CONF_DECLARE(unsigned int, mixp_versionMajor)
-MIXP_CONF_DECLARE(unsigned int, mixp_versionMinor)
-MIXP_CONF_DECLARE(unsigned int, mixp_versionPatch)
-
-//MediaInfo Version
-MIXP_CONF_DECLARE(unsigned int, mixp_mediaInfoVerMajor)
-MIXP_CONF_DECLARE(unsigned int, mixp_mediaInfoVerMinor)
-MIXP_CONF_DECLARE(unsigned int, mixp_mediaInfoVerPatch)
-
-//MediaInfo Checksum
-MIXP_CONF_DECLARE(char*, mixp_checksum_x86_i686)
-MIXP_CONF_DECLARE(char*, mixp_checksum_x86_sse2)
-MIXP_CONF_DECLARE(char*, mixp_checksum_x64_sse2)
-MIXP_CONF_DECLARE(char*, mixp_checksum_x64_avx2)
-
-//Build date
-MIXP_CONF_DECLARE(char*, mixp_buildDate)
-MIXP_CONF_DECLARE(char*, mixp_buildTime)
-
-//Show console
-#define MIXP_CONSOLE (0)
-
-//Debug build
-#if defined(_DEBUG) && defined(QT_DEBUG) && !defined(NDEBUG) && !defined(QT_NO_DEBUG)
-	#define MIXP_DEBUG (1)
-#else
-	#define MIXP_DEBUG (0)
-#endif
-
-//Undefine
-#undef MIXP_CONF_DECLARE
+#define MIXP_VERSION_MAJOR    2
+#define MIXP_VERSION_MINOR_HI 4
+#define MIXP_VERSION_MINOR_LO 6
+#define MIXP_VERSION_PATCH    0

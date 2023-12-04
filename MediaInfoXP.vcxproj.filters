@@ -59,12 +59,18 @@
     <ClCompile Include="tmp\MediaInfoXP\QRC_MediaInfoXP.cpp">
       <Filter>Source Files\Generated</Filter>
     </ClCompile>
+    <ClCompile Include="src\Config.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\ShellExtension.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Version.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -136,6 +136,7 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Config.cpp" />
     <ClCompile Include="src\IPC.cpp" />
     <ClCompile Include="src\Main.cpp" />
     <ClCompile Include="src\MainWindow.cpp" />
@@ -159,6 +160,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Config.h" />
+    <ClInclude Include="src\Version.h" />
     <CustomBuild Include="src\IPC.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Release_Static|Win32'">"$(QTDIR)\bin\moc.exe" -o "$(SolutionDir)\tmp\$(ProjectName)\MOC_%(Filename).cpp" "%(FullPath)"</Command>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(QTDIR)\bin\moc.exe" -o "$(SolutionDir)\tmp\$(ProjectName)\MOC_%(Filename).cpp" "%(FullPath)"</Command>

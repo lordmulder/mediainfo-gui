@@ -19,8 +19,6 @@
 // http://www.gnu.org/licenses/gpl-2.0.txt
 ///////////////////////////////////////////////////////////////////////////////
 
-#define MIXP_CREATE_CONFIG 1
-
 //MUTils
 #include <MUtils/Startup.h>
 #include <MUtils/IPCChannel.h>

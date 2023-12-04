@@ -1,7 +1,7 @@
 // Microsoft Visual C++ generated resource script.
 //
 #include "WinResrc.h" //"afxres.h"
-
+#include "src/Version.h"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -9,6 +9,14 @@
 //
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 
+/////////////////////////////////////////////////////////////////////////////
+//
+// C macro preprocessor 
+//
+#define VERSION_STRING_GLUE_HELPER_STAGE2(X) #X
+#define VERSION_STRING_GLUE_HELPER(W,X,Y,Z) VERSION_STRING_GLUE_HELPER_STAGE2(W.X##Y.Z)
+#define VERSION_STRING_GLUE(W,X,Y,Z) VERSION_STRING_GLUE_HELPER(W,X,Y,Z)
+#define VERSION_STRING VERSION_STRING_GLUE(MIXP_VERSION_MAJOR,MIXP_VERSION_MINOR_HI,MIXP_VERSION_MINOR_LO,MIXP_VERSION_PATCH)
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -23,8 +31,8 @@ IDI_ICON1               ICON                    "MediaInfoXP.ico"
 //
 
 VS_VERSION_INFO VERSIONINFO
-  FILEVERSION    2,3,6,1
-  PRODUCTVERSION 2,3,6,1
+  FILEVERSION    MIXP_VERSION_MAJOR,MIXP_VERSION_MINOR_HI,MIXP_VERSION_MINOR_LO,MIXP_VERSION_PATCH
+  PRODUCTVERSION MIXP_VERSION_MAJOR,MIXP_VERSION_MINOR_HI,MIXP_VERSION_MINOR_LO,MIXP_VERSION_PATCH
   FILEFLAGSMASK  0x17L
 #ifdef _DEBUG
   FILEFLAGS 0x3L
@@ -43,13 +51,13 @@ BEGIN
             VALUE "Comments", "This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY"
             VALUE "CompanyName", "Free Software Foundation"
             VALUE "FileDescription", "MediaInfoXP - GUI for MediaInfo"
-            VALUE "FileVersion", "2.36.1"
+            VALUE "FileVersion", VERSION_STRING
             VALUE "InternalName", "MediaInfoXP_Qt"
             VALUE "LegalCopyright", "Copyright (C) 2004-2023 LoRd_MuldeR <MuldeR2@GMX.de>"
             VALUE "LegalTrademarks", "This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License <http://www.gnu.org/>"
             VALUE "OriginalFilename", "MediaInfoXP.exe"
             VALUE "ProductName", "MediaInfoXP - GUI for MediaInfo"
-            VALUE "ProductVersion", "2.36.1"
+            VALUE "ProductVersion", VERSION_STRING
             VALUE "Website" "http://muldersoft.com/"
         END
     END
