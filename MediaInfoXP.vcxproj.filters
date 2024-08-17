@@ -36,6 +36,12 @@
     <CustomBuild Include="MediaInfoXP.qrc">
       <Filter>Resources</Filter>
     </CustomBuild>
+    <CustomBuild Include="Binaries_x86.qrc">
+      <Filter>Resources</Filter>
+    </CustomBuild>
+    <CustomBuild Include="Binaries_x64.qrc">
+      <Filter>Resources</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Main.cpp">
@@ -61,6 +67,12 @@
     </ClCompile>
     <ClCompile Include="src\Config.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="tmp\MediaInfoXP\QRC_Binaries_x86.cpp">
+      <Filter>Source Files\Generated</Filter>
+    </ClCompile>
+    <ClCompile Include="tmp\MediaInfoXP\QRC_Binaries_x64.cpp">
+      <Filter>Source Files\Generated</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

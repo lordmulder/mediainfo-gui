@@ -1,0 +1,7 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource>
+    <file>res/bin/MediaInfo.x86-i686.exe</file>
+    <file>res/bin/MediaInfo.x86-sse2.exe</file>
+  </qresource>
+</RCC>
