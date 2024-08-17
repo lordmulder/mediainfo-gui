@@ -53,7 +53,7 @@ BEGIN
             VALUE "FileDescription", "MediaInfoXP - GUI for MediaInfo"
             VALUE "FileVersion", VERSION_STRING
             VALUE "InternalName", "MediaInfoXP_Qt"
-            VALUE "LegalCopyright", "Copyright (C) 2004-2023 LoRd_MuldeR <MuldeR2@GMX.de>"
+            VALUE "LegalCopyright", "Copyright (C) 2004-2024 LoRd_MuldeR <MuldeR2@GMX.de>"
             VALUE "LegalTrademarks", "This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License <http://www.gnu.org/>"
             VALUE "OriginalFilename", "MediaInfoXP.exe"
             VALUE "ProductName", "MediaInfoXP - GUI for MediaInfo"
